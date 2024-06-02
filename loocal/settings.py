@@ -40,7 +40,11 @@ INSTALLED_APPS = [
     'corsheaders',
     'rest_framework',
     'coreapi',
-    'products'
+    'mercadopago',
+    'products',
+    'orders',
+    'payments',
+    'csp'
 ]
 
 MIDDLEWARE = [
@@ -130,8 +134,30 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-CORS_ALLOWED_ORIGINS = ['http://localhost:5173']
+CORS_ALLOW_ALL_ORIGINS = True
+
+CORS_ALLOWED_ORIGINS = [
+    'http://localhost:5173',
+    'https://loocal.co',
+    'http://loocal.co',
+]
 
 REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.coreapi.AutoSchema'
 }
+
+CSP_DEFAULT_SRC = ("'self'",)
+CSP_SCRIPT_SRC = (
+    "'self'",
+    "'unsafe-inline'",
+    "'unsafe-eval'",
+    "'strict-dynamic'",
+    "https://http2.mlstatic.com",
+    "https://www.mercadopago.com",
+)
+CSP_STYLE_SRC = ("'self'", "'unsafe-inline'",)
+CSP_IMG_SRC = ("'self'", "data:", "https://www.mercadopago.com",)
+CSP_CONNECT_SRC = ("'self'", "https://api.mercadopago.com",)
+CSP_FRAME_SRC = ("'self'", "https://www.mercadopago.com",)
+CSP_FONT_SRC = ("'self'", "https://fonts.gstatic.com",)
+CSP_OBJECT_SRC = ("'self'",)
