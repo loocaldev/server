@@ -19,12 +19,8 @@ load_dotenv()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Define la ruta de la carpeta de archivos estáticos
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-
-# Define las rutas de la carpeta de medios y la subcarpeta de imágenes de productos
-MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+# SECURITY WARNING: don't run with debug turned on in production!
+DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 
@@ -40,6 +36,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'rest_framework',
     'coreapi',
+    'whitenoise.runserver_nostatic',
     'mercadopago',
     'products',
     'orders',
@@ -128,13 +125,14 @@ STATIC_URL = '/static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
-
 # Añade la carpeta de imágenes de productos a STATICFILES_DIRS
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'products/static'),
 ]
+
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 CORS_ALLOW_ALL_ORIGINS = False
 
@@ -157,6 +155,9 @@ CSP_SCRIPT_SRC = (
 )
 CSP_STYLE_SRC = ("'self'", "'unsafe-inline'",)
 CSP_FONT_SRC = ("'self'", "https://fonts.gstatic.com",)
+
 CSP_OBJECT_SRC = ("'self'",)
+
+CSRF_TRUSTED_ORIGINS = ['http://*','https://server-production-1ddc.up.railway.app/']
 
 SECRET_KEY = os.getenv('SECRET_KEY', 'default_secret_key')
