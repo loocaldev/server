@@ -158,6 +158,6 @@ CSP_FONT_SRC = ("'self'", "https://fonts.gstatic.com",)
 
 CSP_OBJECT_SRC = ("'self'",)
 
-CSRF_TRUSTED_ORIGINS = ['http://*','https://server-production-1ddc.up.railway.app/']
+CSRF_TRUSTED_ORIGINS = ['http://*','https://server-production-1ddc.up.railway.app','https://loocal.co','http://loocal.co',]
 
 SECRET_KEY = os.getenv('SECRET_KEY', 'default_secret_key')
