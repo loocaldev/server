@@ -26,11 +26,6 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-# Añade la carpeta de imágenes de productos a STATICFILES_DIRS
-STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'media/product_images'),
-]
-
 ALLOWED_HOSTS = ['*']
 
 # Application definition
@@ -135,6 +130,11 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# Añade la carpeta de imágenes de productos a STATICFILES_DIRS
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'products/static'),
+]
 
 CORS_ALLOW_ALL_ORIGINS = False
 
