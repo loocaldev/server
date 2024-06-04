@@ -29,6 +29,7 @@ STATICFILES_DIRS = [
 ]
 
 ALLOWED_HOSTS = ['server-production-1ddc.up.railway.app']
+CSRF_TRUSTED_ORIGINS = ['http://*','http://server-production-1ddc.up.railway.app']
 
 
 # Application definition
