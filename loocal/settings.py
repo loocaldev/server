@@ -12,20 +12,25 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 import os
 from pathlib import Path
 
+import os
+from pathlib import Path
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Define la ruta de la carpeta de archivos estáticos
+STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
+# Define las rutas de la carpeta de medios y la subcarpeta de imágenes de productos
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-$got=fmejf+82uz^qswc2&i^hqc=srnz$-(@h*$0kw70nmukwt'
+# Añade la carpeta de imágenes de productos a STATICFILES_DIRS
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'media/product_images'),
+]
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
-ALLOWED_HOSTS = ['.vercel.app']
+ALLOWED_HOSTS = ['server-production-1ddc.up.railway.app']
 
 
 # Application definition
