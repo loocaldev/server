@@ -156,13 +156,12 @@ CSP_SCRIPT_SRC = (
     "'self'",
     "'unsafe-inline'",
     "'unsafe-eval'",
-    "'strict-dynamic'",
-    "https://http2.mlstatic.com",
-    "https://www.mercadopago.com",
+    "'strict-dynamic'"
 )
 CSP_STYLE_SRC = ("'self'", "'unsafe-inline'",)
-CSP_IMG_SRC = ("'self'", "data:", "https://www.mercadopago.com",)
-CSP_CONNECT_SRC = ("'self'", "https://api.mercadopago.com",)
-CSP_FRAME_SRC = ("'self'", "https://www.mercadopago.com",)
 CSP_FONT_SRC = ("'self'", "https://fonts.gstatic.com",)
 CSP_OBJECT_SRC = ("'self'",)
+
+load_dotenv()
+
+SECRET_KEY = os.getenv('SECRET_KEY', 'default_secret_key')
