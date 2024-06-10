@@ -45,7 +45,8 @@ INSTALLED_APPS = [
     'products',
     'orders',
     'payments',
-    'csp'
+    'csp',
+    'loocal'
 ]
 
 MIDDLEWARE = [
@@ -154,7 +155,7 @@ REST_FRAMEWORK = {
     'DEFAULT_EXPIRATION_DELTA': datetime.timedelta(hours=1),
 }
 
-SESSION_COOKIE_AGE = 30
+SESSION_COOKIE_AGE = 3600
 
 CSP_DEFAULT_SRC = ("'self'",)
 CSP_SCRIPT_SRC = (
