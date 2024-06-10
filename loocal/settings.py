@@ -101,11 +101,13 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.0/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'es'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'America/Bogota'
 
 USE_I18N = True
+
+USE_L10N = True
 
 USE_TZ = True
 
@@ -169,3 +171,12 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 
 SECRET_KEY = os.getenv('SECRET_KEY', 'default_secret_key')
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.titan.email'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'camilo@loocal.co'
+EMAIL_HOST_PASSWORD = 'L00c4l@dev24'
+EMAIL_USE_TLS = True 
+DEFAULT_FROM_EMAIL = 'your_email@example.com'
