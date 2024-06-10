@@ -32,9 +32,8 @@ def register(request):
     serializer = UserSerializer(data=request.data)
     
     if serializer.is_valid():
-        serializer.save()
-        
-        user = User.objects.get(username=serializer.data['username'])
+        user = serializer.save()
+        user.email = request.data['username']
         user.set_password(serializer.data['password'])
         user.save()
         
