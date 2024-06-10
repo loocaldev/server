@@ -39,12 +39,7 @@ def register(request):
         user = user_serializer.save()
         user.email = request.data['username']
         user.set_password(request.data['password'])
-        user.is_active = False  # Desactivar la cuenta hasta que se verifique el correo electrónico
         user.save()
-        
-        # Iniciar sesión después de registrar al usuario
-        user = authenticate(username=user.username, password=request.data['password'])
-        django_login(request, user)
 
         profile_data = request.data.get('profile', {})
         UserProfile.objects.create(user=user, **profile_data)
@@ -54,7 +49,6 @@ def register(request):
             Address.objects.create(user=user, **address_data)
         
         token = Token.objects.create(user=user)
-
         return Response({'token': token.key, "user": user_serializer.data}, status=status.HTTP_201_CREATED)
     
     return Response(user_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
