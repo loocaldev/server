@@ -29,6 +29,8 @@ urlpatterns = [
     re_path('register', views.register),
     re_path('profile', views.profile),
     re_path('logout', views.logout),
+    path('add_address/', views.add_address, name='add_address'),
+    path('get_addresses/', views.get_addresses, name='get_addresses'),
 ]
 
 if settings.DEBUG:
