@@ -177,6 +177,8 @@ CSP_OBJECT_SRC = ("'self'",)
 CSRF_TRUSTED_ORIGINS = [
     'http://*',
     'https://server-production-1ddc.up.railway.app',
+    'http://107.20.105.251',
+    'http://ec2-107-20-105-251.compute-1.amazonaws.com',
     'https://loocal.co',
     'http://loocal.co',
 ]
