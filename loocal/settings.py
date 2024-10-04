@@ -150,7 +150,7 @@ CORS_ALLOWED_ORIGINS = [
     'http://localhost:5173',
     'https://loocal.co',
     'http://loocal.co',
-    '44.220.218.144',
+    'http://44.220.218.144',
 ]
 
 REST_FRAMEWORK = {
