@@ -196,6 +196,7 @@ EMAIL_HOST_PASSWORD = 'L00c4l@dev24'
 EMAIL_USE_TLS = True 
 DEFAULT_FROM_EMAIL = 'your_email@example.com'
 
+DEBUG = True
 
 LOGGING = {
     'version': 1,
