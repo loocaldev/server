@@ -82,7 +82,7 @@ WSGI_APPLICATION = 'loocal.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': '-',
+        'NAME': 'loocaldb',
         'USER': 'postgres',   
         'PASSWORD': 'L00c4l$24',  
         'HOST': 'loocaldb.chmcym884hnk.us-east-1.rds.amazonaws.com',
