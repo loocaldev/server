@@ -25,16 +25,16 @@ from . import views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('products/',include('products.urls')),
-    path('orders/',include('orders.urls')),
-    path('payments/', include('payments.urls')),
-    re_path('login', views.login),
-    re_path('register', views.register),
-    re_path('profile', views.profile),
-    re_path('logout', views.logout),
-    path('add_address/', views.add_address, name='add_address'),
-    path('get_addresses/', views.get_addresses, name='get_addresses'),
-    path('update_user/', views.update_user, name='update_user'),
+    path('api/products/',include('products.urls')),
+    path('api/orders/',include('orders.urls')),
+    path('api/payments/', include('payments.urls')),
+    re_path('api/login', views.login),
+    re_path('api/register', views.register),
+    re_path('api/profile', views.profile),
+    re_path('api/logout', views.logout),
+    path('api/add_address/', views.add_address, name='add_address'),
+    path('api/get_addresses/', views.get_addresses, name='get_addresses'),
+    path('api/update_user/', views.update_user, name='update_user'),
 ]
 
 if settings.DEBUG:
