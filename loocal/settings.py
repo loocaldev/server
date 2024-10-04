@@ -74,10 +74,21 @@ WSGI_APPLICATION = 'loocal.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
-DATABASES = {
-    'default': dj_database_url.config(default=os.environ.get('DATABASE_URL'))
-}
+# DATABASES = {
+#     'default': dj_database_url.config(default=os.environ.get('DATABASE_URL'))
+# }
 
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'database-1',
+        'USER': 'postgres',
+        'PASSWORD': 'L00c4l$24',
+        'HOST': 'dbloocal.chmcym884hnk.us-east-1.rds.amazonaws.com',
+        'PORT': '5432',
+    }
+}
 
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
@@ -180,3 +191,20 @@ EMAIL_HOST_USER = 'camilo@loocal.co'
 EMAIL_HOST_PASSWORD = 'L00c4l@dev24'
 EMAIL_USE_TLS = True 
 DEFAULT_FROM_EMAIL = 'your_email@example.com'
+
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'django.db.backends': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+        },
+    },
+}
