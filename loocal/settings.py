@@ -82,10 +82,10 @@ WSGI_APPLICATION = 'loocal.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'database-1',
+        'NAME': 'loocaldb',
         'USER': 'postgres',   
         'PASSWORD': 'L00c4l$24',  
-        'HOST': 'database-1.chmcym884hnk.us-east-1.rds.amazonaws.com',
+        'HOST': 'loocaldb.chmcym884hnk.us-east-1.rds.amazonaws.com',
         'PORT': '5432', 
     }
 }
