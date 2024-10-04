@@ -182,7 +182,7 @@ CSRF_TRUSTED_ORIGINS = [
     'http://ec2-107-20-105-251.compute-1.amazonaws.com',
     'https://loocal.co',
     'http://loocal.co',
-    '44.220.218.144',
+    'http://44.220.218.144',
 ]
 
 SECRET_KEY = os.getenv('SECRET_KEY', 'default_secret_key')
