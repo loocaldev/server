@@ -14,7 +14,8 @@ TEMPLATE_DIR = os.path.join(BASE_DIR, "webappexample", "templates")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ['44.220.218.144', 'loocal.co', 'www.loocal.co']
+
 
 # Application definition
 
