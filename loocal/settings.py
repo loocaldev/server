@@ -53,6 +53,40 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'loocal.urls'
 
+AUTH0_DOMAIN = os.getenv('AUTH0_DOMAIN', 'dev-bgodgyzz8ugzloem.us.auth0.com')
+API_IDENTIFIER = os.getenv('API_IDENTIFIER', 'https://dev-bgodgyzz8ugzloem.us.auth0.com/api/v2/')
+
+# Configuración de REST Framework
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    ),
+}
+
+# Añade esta configuración para obtener las claves públicas de Auth0 y validar los JWT
+def get_jwks():
+    jwks_url = f"https://{AUTH0_DOMAIN}/.well-known/jwks.json"
+    jwks = requests.get(jwks_url).json()
+    return jwks
+
+def get_rsa_key(token):
+    jwks = get_jwks()
+    unverified_header = jwt.get_unverified_header(token)
+    rsa_key = {}
+    for key in jwks['keys']:
+        if key['kid'] == unverified_header['kid']:
+            rsa_key = {
+                'kty': key['kty'],
+                'kid': key['kid'],
+                'use': key['use'],
+                'n': key['n'],
+                'e': key['e']
+            }
+    return rsa_key
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -83,11 +117,11 @@ WSGI_APPLICATION = 'loocal.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('DB_NAME'),  # Nombre de la base de datos
-        'USER': os.getenv('DB_USER'),  # Usuario de la base de datos
-        'PASSWORD': os.getenv('DB_PASSWORD'),  # Contraseña de la base de datos
-        'HOST': os.getenv('DB_HOST'),  # Host (dirección del servidor)
-        'PORT': os.getenv('DB_PORT', '5432'),  # Puerto (puedes asignar un valor por defecto)
+        'NAME': os.getenv('DB_NAME'),
+        'USER': os.getenv('DB_USER'),
+        'PASSWORD': os.getenv('DB_PASSWORD'),
+        'HOST': os.getenv('DB_HOST'), 
+        'PORT': os.getenv('DB_PORT', '5432'), 
     }
 }
 

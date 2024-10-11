@@ -13,53 +13,100 @@ from . import signals
 
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.authentication import TokenAuthentication
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
-@api_view(['POST'])
-def login(request):
-    user = authenticate(username=request.data['username'], password=request.data['password'])
+# @api_view(['POST'])
+# def login(request):
+#     user = authenticate(username=request.data['username'], password=request.data['password'])
     
-    if not user.check_password(request.data['password']):
-        return Response({"error": "Invalid password"}, status=status.HTTP_400_BAD_REQUEST)
+#     if not user.check_password(request.data['password']):
+#         return Response({"error": "Invalid password"}, status=status.HTTP_400_BAD_REQUEST)
     
-    django_login(request, user)
+#     django_login(request, user)
     
-    token, created = Token.objects.get_or_create(user=user)
-    serializer = UserSerializer(instance=user)
+#     token, created = Token.objects.get_or_create(user=user)
+#     serializer = UserSerializer(instance=user)
     
-    print("Login: Session cookie age:", request.session.get_expiry_age())
-    print("Login: Token expiration:", token.created + datetime.timedelta(hours=1))
+#     print("Login: Session cookie age:", request.session.get_expiry_age())
+#     print("Login: Token expiration:", token.created + datetime.timedelta(hours=1))
     
-    return Response({"token": token.key, "user": serializer.data}, status=status.HTTP_200_OK)
+#     return Response({"token": token.key, "user": serializer.data}, status=status.HTTP_200_OK)
 
-@api_view(['POST'])
-def register(request):
-    user_serializer = UserSerializer(data=request.data)
+# @api_view(['POST'])
+# def register(request):
+#     user_serializer = UserSerializer(data=request.data)
     
-    if user_serializer.is_valid():
-        user = user_serializer.save()
-        user.email = request.data['username']
-        user.set_password(request.data['password'])
-        user.save()
+#     if user_serializer.is_valid():
+#         user = user_serializer.save()
+#         user.email = request.data['username']
+#         user.set_password(request.data['password'])
+#         user.save()
 
-        profile_data = request.data.get('profile', {})
-        UserProfile.objects.create(user=user, **profile_data)
+#         profile_data = request.data.get('profile', {})
+#         UserProfile.objects.create(user=user, **profile_data)
         
-        addresses_data = request.data.get('addresses', [])
-        for address_data in addresses_data:
-            Address.objects.create(user=user, **address_data)
+#         addresses_data = request.data.get('addresses', [])
+#         for address_data in addresses_data:
+#             Address.objects.create(user=user, **address_data)
         
-        token = Token.objects.create(user=user)
-        return Response({'token': token.key, "user": user_serializer.data}, status=status.HTTP_201_CREATED)
+#         token = Token.objects.create(user=user)
+#         return Response({'token': token.key, "user": user_serializer.data}, status=status.HTTP_201_CREATED)
     
-    return Response(user_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+#     return Response(user_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+# Verificar el JWT proporcionado por Auth0
+def decode_auth0_token(token):
+    rsa_key = get_rsa_key(token)
+    if rsa_key:
+        payload = jwt.decode(
+            token,
+            rsa_key,
+            algorithms=['RS256'],
+            audience=settings.API_IDENTIFIER,
+            issuer=f"https://{settings.AUTH0_DOMAIN}/"
+        )
+        return payload
+    raise ValueError('No se pudo obtener la clave RSA de Auth0')
+
+
 
 @api_view(['GET'])
-@authentication_classes([TokenAuthentication])
+@authentication_classes([JWTAuthentication])
 @permission_classes([IsAuthenticated])
 def profile(request):
-    user = request.user
-    serializer = UserSerializer(instance=user)
-    return Response(serializer.data)
+    token = request.headers.get('Authorization', '').split()[1]
+    
+    # Decodificar el token JWT para obtener la información del usuario
+    try:
+        payload = decode_auth0_token(token)
+    except jwt.ExpiredSignatureError:
+        return Response({'error': 'Token ha expirado'}, status=400)
+    except jwt.JWTClaimsError:
+        return Response({'error': 'Token inválido'}, status=400)
+    
+    # Obtener o crear el usuario
+    user, created = User.objects.get_or_create(
+        username=payload['sub'],
+        defaults={'email': payload.get('email', '')}
+    )
+    
+    # Actualizar la información del usuario si es necesario
+    user.email = payload.get('email', user.email)
+    user.save()
+
+    # Crear o actualizar el perfil
+    profile_data = {
+        'profile_picture': payload.get('picture', None)  # Imagen de perfil si está disponible en Auth0
+    }
+    profile, _ = UserProfile.objects.get_or_create(user=user, defaults=profile_data)
+    
+    if payload.get('picture'):
+        profile.profile_picture = payload.get('picture')
+        profile.save()
+
+    # Serializar y devolver los datos del usuario y el perfil
+    user_serializer = UserSerializer(instance=user)
+    return Response(user_serializer.data)
 
 @api_view(['POST'])
 @authentication_classes([TokenAuthentication])
