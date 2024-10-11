@@ -15,44 +15,44 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.authentication import TokenAuthentication
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
-# @api_view(['POST'])
-# def login(request):
-#     user = authenticate(username=request.data['username'], password=request.data['password'])
+@api_view(['POST'])
+def login(request):
+    user = authenticate(username=request.data['username'], password=request.data['password'])
     
-#     if not user.check_password(request.data['password']):
-#         return Response({"error": "Invalid password"}, status=status.HTTP_400_BAD_REQUEST)
+    if not user.check_password(request.data['password']):
+        return Response({"error": "Invalid password"}, status=status.HTTP_400_BAD_REQUEST)
     
-#     django_login(request, user)
+    django_login(request, user)
     
-#     token, created = Token.objects.get_or_create(user=user)
-#     serializer = UserSerializer(instance=user)
+    token, created = Token.objects.get_or_create(user=user)
+    serializer = UserSerializer(instance=user)
     
-#     print("Login: Session cookie age:", request.session.get_expiry_age())
-#     print("Login: Token expiration:", token.created + datetime.timedelta(hours=1))
+    print("Login: Session cookie age:", request.session.get_expiry_age())
+    print("Login: Token expiration:", token.created + datetime.timedelta(hours=1))
     
-#     return Response({"token": token.key, "user": serializer.data}, status=status.HTTP_200_OK)
+    return Response({"token": token.key, "user": serializer.data}, status=status.HTTP_200_OK)
 
-# @api_view(['POST'])
-# def register(request):
-#     user_serializer = UserSerializer(data=request.data)
+@api_view(['POST'])
+def register(request):
+    user_serializer = UserSerializer(data=request.data)
     
-#     if user_serializer.is_valid():
-#         user = user_serializer.save()
-#         user.email = request.data['username']
-#         user.set_password(request.data['password'])
-#         user.save()
+    if user_serializer.is_valid():
+        user = user_serializer.save()
+        user.email = request.data['username']
+        user.set_password(request.data['password'])
+        user.save()
 
-#         profile_data = request.data.get('profile', {})
-#         UserProfile.objects.create(user=user, **profile_data)
+        profile_data = request.data.get('profile', {})
+        UserProfile.objects.create(user=user, **profile_data)
         
-#         addresses_data = request.data.get('addresses', [])
-#         for address_data in addresses_data:
-#             Address.objects.create(user=user, **address_data)
+        addresses_data = request.data.get('addresses', [])
+        for address_data in addresses_data:
+            Address.objects.create(user=user, **address_data)
         
-#         token = Token.objects.create(user=user)
-#         return Response({'token': token.key, "user": user_serializer.data}, status=status.HTTP_201_CREATED)
+        token = Token.objects.create(user=user)
+        return Response({'token': token.key, "user": user_serializer.data}, status=status.HTTP_201_CREATED)
     
-#     return Response(user_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    return Response(user_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 # Verificar el JWT proporcionado por Auth0
 def decode_auth0_token(token):
