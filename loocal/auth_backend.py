@@ -22,6 +22,7 @@ class Auth0JWTAuthentication(BaseAuthentication):
 
         try:
             payload = self.decode_auth0_token(token)
+            print(f"Sub (Auth0 ID) del token: {payload['sub']}")
         except jwt.ExpiredSignatureError:
             raise AuthenticationFailed('El token ha expirado')
         except jwt.JWTClaimsError:
