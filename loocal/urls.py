@@ -28,13 +28,14 @@ urlpatterns = [
     path('api/products/',include('products.urls')),
     path('api/orders/',include('orders.urls')),
     path('api/payments/', include('payments.urls')),
-    # re_path('api/login', views.login),
-    # re_path('api/register', views.register),
+    re_path('api/login', views.login),
+    re_path('api/register', views.register),
     re_path('api/profile', views.profile),
-    # re_path('api/logout', views.logout),
-    # path('api/add_address/', views.add_address, name='add_address'),
-    # path('api/get_addresses/', views.get_addresses, name='get_addresses'),
-    # path('api/update_user/', views.update_user, name='update_user'),
+    re_path('api/logout', views.logout),
+    path('api/add_address/', views.add_address, name='add_address'),
+    path('api/get_addresses/', views.get_addresses, name='get_addresses'),
+    path('api/update_user/', views.update_user, name='update_user'),
+    path('auth0/webhook/', views.auth0_webhook),    
 ]
 
 if settings.DEBUG:
