@@ -1,5 +1,3 @@
-# loocal/auth_backend.py
-
 import jwt
 from rest_framework.authentication import BaseAuthentication
 from rest_framework.exceptions import AuthenticationFailed
@@ -8,13 +6,9 @@ import requests
 from django.contrib.auth.models import User
 
 class Auth0JWTAuthentication(BaseAuthentication):
-    """
-    Autenticación personalizada para manejar los JWT de Auth0.
-    """
-
     def authenticate(self, request):
         auth = request.headers.get('Authorization', '').split()
-        
+
         if not auth or auth[0].lower() != 'bearer':
             return None
 
@@ -24,7 +18,7 @@ class Auth0JWTAuthentication(BaseAuthentication):
             raise AuthenticationFailed('Encabezado de autorización inválido')
 
         token = auth[1]
-        
+
         try:
             payload = self.decode_auth0_token(token)
         except jwt.ExpiredSignatureError:
@@ -33,13 +27,21 @@ class Auth0JWTAuthentication(BaseAuthentication):
             raise AuthenticationFailed('Token inválido')
         except Exception as e:
             raise AuthenticationFailed(f'Error desconocido al decodificar el token: {str(e)}')
-        
-        # Aquí asocia el payload con un usuario en tu base de datos
-        user, _ = User.objects.get_or_create(
-            username=payload['sub'],
-            defaults={'email': payload.get('email', ''), 'is_active': True}
+
+        # Crear o actualizar el usuario en Django basado en el payload de Auth0
+        email = payload.get('email', '')  # Extraer el email del payload
+        username = payload['sub']  # Usar el 'sub' de Auth0 como username único
+
+        user, created = User.objects.get_or_create(
+            username=username,
+            defaults={'email': email, 'is_active': True}  # Asegurarse de que los usuarios estén activos
         )
-        
+
+        # Si el usuario ya existía, actualiza su email si es necesario
+        if not created and user.email != email:
+            user.email = email
+            user.save()
+
         return (user, token)
 
     def decode_auth0_token(self, token):
@@ -80,6 +82,5 @@ class Auth0JWTAuthentication(BaseAuthentication):
         try:
             jwks = requests.get(jwks_url).json()
         except requests.exceptions.RequestException as e:
-            print(f"Error al obtener las claves JWKS desde {jwks_url}: {str(e)}")
-            return None
+            raise AuthenticationFailed(f"Error al obtener las claves JWKS: {str(e)}")
         return jwks
