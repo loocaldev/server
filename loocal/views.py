@@ -15,6 +15,56 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.authentication import TokenAuthentication
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
+# Verificar el JWT proporcionado por Auth0
+def decode_auth0_token(token):
+    rsa_key = get_rsa_key(token)
+    if rsa_key:
+        payload = jwt.decode(
+            token,
+            rsa_key,
+            algorithms=['RS256'],
+            audience=settings.API_IDENTIFIER,
+            issuer=f"https://{settings.AUTH0_DOMAIN}/"
+        )
+        return payload
+    raise ValueError('No se pudo obtener la clave RSA de Auth0')
+
+# Obtener o crear el usuario basado en la autenticación de Auth0
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def profile(request):
+    token = request.headers.get('Authorization', '').split()[1]
+    
+    try:
+        payload = decode_auth0_token(token)
+    except jwt.ExpiredSignatureError:
+        return Response({'error': 'Token ha expirado'}, status=400)
+    except jwt.JWTClaimsError:
+        return Response({'error': 'Token inválido'}, status=400)
+
+    # Sincronizar el usuario en Django usando la información de Auth0
+    user, created = User.objects.get_or_create(
+        username=payload['sub'],  # Auth0 sub
+        defaults={'email': payload.get('email', '')}
+    )
+
+    # Actualizar la información del usuario si es necesario
+    user.email = payload.get('email', user.email)
+    user.save()
+
+    # Crear o actualizar el perfil del usuario
+    profile_data = {'profile_picture': payload.get('picture', None)}
+    profile, _ = UserProfile.objects.get_or_create(user=user, defaults=profile_data)
+    
+    if payload.get('picture'):
+        profile.profile_picture = payload.get('picture')
+        profile.save()
+
+    # Retornar los datos del usuario en Django
+    user_serializer = UserSerializer(instance=user)
+    return Response(user_serializer.data)
+
 @api_view(['POST'])
 def login(request):
     user = authenticate(username=request.data['username'], password=request.data['password'])
@@ -53,60 +103,6 @@ def register(request):
         return Response({'token': token.key, "user": user_serializer.data}, status=status.HTTP_201_CREATED)
     
     return Response(user_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-# Verificar el JWT proporcionado por Auth0
-def decode_auth0_token(token):
-    rsa_key = get_rsa_key(token)
-    if rsa_key:
-        payload = jwt.decode(
-            token,
-            rsa_key,
-            algorithms=['RS256'],
-            audience=settings.API_IDENTIFIER,
-            issuer=f"https://{settings.AUTH0_DOMAIN}/"
-        )
-        return payload
-    raise ValueError('No se pudo obtener la clave RSA de Auth0')
-
-
-
-@api_view(['GET'])
-@authentication_classes([JWTAuthentication])
-@permission_classes([IsAuthenticated])
-def profile(request):
-    token = request.headers.get('Authorization', '').split()[1]
-    
-    # Decodificar el token JWT para obtener la información del usuario
-    try:
-        payload = decode_auth0_token(token)
-    except jwt.ExpiredSignatureError:
-        return Response({'error': 'Token ha expirado'}, status=400)
-    except jwt.JWTClaimsError:
-        return Response({'error': 'Token inválido'}, status=400)
-    
-    # Obtener o crear el usuario
-    user, created = User.objects.get_or_create(
-        username=payload['sub'],
-        defaults={'email': payload.get('email', '')}
-    )
-    
-    # Actualizar la información del usuario si es necesario
-    user.email = payload.get('email', user.email)
-    user.save()
-
-    # Crear o actualizar el perfil
-    profile_data = {
-        'profile_picture': payload.get('picture', None)  # Imagen de perfil si está disponible en Auth0
-    }
-    profile, _ = UserProfile.objects.get_or_create(user=user, defaults=profile_data)
-    
-    if payload.get('picture'):
-        profile.profile_picture = payload.get('picture')
-        profile.save()
-
-    # Serializar y devolver los datos del usuario y el perfil
-    user_serializer = UserSerializer(instance=user)
-    return Response(user_serializer.data)
 
 @api_view(['POST'])
 @authentication_classes([TokenAuthentication])
