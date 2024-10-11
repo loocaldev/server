@@ -54,33 +54,12 @@ ALGORITHMS = ["RS256"]
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',  # Puedes eliminar JWT si no lo usas para otras funcionalidades
+        'loocal.auth_backend.Auth0JWTAuthentication',  # Actualiza esta ruta según tu proyecto
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
     ),
 }
-
-# Añadimos la configuración de las claves públicas de Auth0 para validar los JWT
-def get_jwks():
-    jwks_url = f"https://{AUTH0_DOMAIN}/.well-known/jwks.json"
-    jwks = requests.get(jwks_url).json()
-    return jwks
-
-def get_rsa_key(token):
-    jwks = get_jwks()
-    unverified_header = jwt.get_unverified_header(token)
-    rsa_key = {}
-    for key in jwks['keys']:
-        if key['kid'] == unverified_header['kid']:
-            rsa_key = {
-                'kty': key['kty'],
-                'kid': key['kid'],
-                'use': key['use'],
-                'n': key['n'],
-                'e': key['e']
-            }
-    return rsa_key
 
 TEMPLATES = [
     {
