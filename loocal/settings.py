@@ -1,23 +1,32 @@
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+import dj_database_url
 import datetime
-import requests  # Asegurarse de que esta librería esté instalada
-import jwt  # Asegurarse de tener la librería pyjwt instalada
+import json
+from jose import jwt  # Importación necesaria para JWT
+import requests
+
 
 load_dotenv()
 
+# Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 TEMPLATE_DIR = os.path.join(BASE_DIR, "webappexample", "templates")
 
+# SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = ['44.220.218.144', 'loocal.co', 'www.loocal.co']
 
+
+# Application definition
+
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
+    'rest_framework.authtoken',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
@@ -48,19 +57,6 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'loocal.urls'
 
-AUTH0_DOMAIN = os.getenv('AUTH0_DOMAIN', 'dev-bgodgyzz8ugzloem.us.auth0.com')
-API_IDENTIFIER = os.getenv('API_IDENTIFIER', 'https://dev-bgodgyzz8ugzloem.us.auth0.com/api/v2/')
-ALGORITHMS = ["RS256"]
-
-REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-        'loocal.auth_backend.Auth0JWTAuthentication',  # Actualiza esta ruta según tu proyecto
-    ),
-    'DEFAULT_PERMISSION_CLASSES': (
-        'rest_framework.permissions.IsAuthenticated',
-    ),
-}
-
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -79,6 +75,15 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'loocal.wsgi.application'
 
+
+# Database
+# https://docs.djangoproject.com/en/5.0/ref/settings/#databases
+
+# DATABASES = {
+#     'default': dj_database_url.config(default=os.environ.get('DATABASE_URL'))
+# }
+
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
@@ -89,6 +94,9 @@ DATABASES = {
         'PORT': os.getenv('DB_PORT', '5432'), 
     }
 }
+
+# Password validation
+# https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -105,6 +113,33 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_jwt.authentication.JSONWebTokenAuthentication',
+    ),
+}
+
+AUTH0_DOMAIN = os.getenv('AUTH0_DOMAIN')
+API_IDENTIFIER = os.getenv('API_IDENTIFIER')
+PUBLIC_KEY = requests.get(f'https://{AUTH0_DOMAIN}/.well-known/jwks.json').json()
+ALGORITHMS = ["RS256"]
+
+def jwt_get_username_from_payload_handler(payload):
+    return payload.get('sub').replace('|', '.')
+
+# Agrega la configuración de Auth0 JWT
+JWT_AUTH = {
+    'JWT_PAYLOAD_GET_USERNAME_HANDLER': jwt_get_username_from_payload_handler,
+    'JWT_SECRET_KEY': PUBLIC_KEY,  # Esto puede estar en variables de entorno
+    'JWT_ALGORITHM': 'RS256',
+    'JWT_AUDIENCE': API_IDENTIFIER,  # Debes configurar esta variable en tu .env
+    'JWT_ISSUER': f'https://{AUTH0_DOMAIN}/',  # Asegúrate que AUTH0_DOMAIN esté configurado
+}
+
+
+# Internationalization
+# https://docs.djangoproject.com/en/5.0/topics/i18n/
+
 LANGUAGE_CODE = 'es'
 
 TIME_ZONE = 'America/Bogota'
@@ -115,6 +150,10 @@ USE_L10N = True
 
 USE_TZ = True
 
+
+# Static files (CSS, JavaScript, Images)
+# https://docs.djangoproject.com/en/5.0/howto/static-files/
+
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
@@ -124,8 +163,12 @@ STATICFILES_DIRS = [
 
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
+# Media files (Uploaded by users)
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# Default primary key field type
+# https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
@@ -137,6 +180,14 @@ CORS_ALLOWED_ORIGINS = [
     'http://loocal.co',
     'http://44.220.218.144',
 ]
+
+REST_FRAMEWORK = {
+    'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.coreapi.AutoSchema',
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework.authentication.TokenAuthentication',
+    ),
+    'DEFAULT_EXPIRATION_DELTA': datetime.timedelta(hours=1),
+}
 
 SESSION_COOKIE_AGE = 3600
 
@@ -154,6 +205,9 @@ CSP_OBJECT_SRC = ("'self'",)
 
 CSRF_TRUSTED_ORIGINS = [
     'http://*',
+    'https://server-production-1ddc.up.railway.app',
+    'http://107.20.105.251',
+    'http://ec2-107-20-105-251.compute-1.amazonaws.com',
     'https://loocal.co',
     'http://loocal.co',
     'http://44.220.218.144',
@@ -167,6 +221,7 @@ EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'camilo@loocal.co'
 EMAIL_HOST_PASSWORD = 'L00c4l@dev24'
+EMAIL_USE_TLS = True 
 DEFAULT_FROM_EMAIL = 'your_email@example.com'
 
 DEBUG = True
