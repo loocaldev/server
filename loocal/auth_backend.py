@@ -8,6 +8,7 @@ from django.contrib.auth.models import User
 class Auth0JWTAuthentication(BaseAuthentication):
     def authenticate(self, request):
         auth = request.headers.get('Authorization', '').split()
+        print(f"Token recibido: {auth}")
 
         if not auth or auth[0].lower() != 'bearer':
             return None
@@ -31,11 +32,18 @@ class Auth0JWTAuthentication(BaseAuthentication):
         # Crear o actualizar el usuario en Django basado en el payload de Auth0
         email = payload.get('email', '')  # Extraer el email del payload
         username = payload['sub']  # Usar el 'sub' de Auth0 como username único
+        
+        print(f"Procesando usuario con username: {username} y email: {email}")
 
         user, created = User.objects.get_or_create(
             username=username,
             defaults={'email': email, 'is_active': True}  # Asegurarse de que los usuarios estén activos
         )
+        
+        if created:
+            print(f"Usuario creado: {user.username}")
+        else:
+            print(f"Usuario ya existente: {user.username}")
 
         # Si el usuario ya existía, actualiza su email si es necesario
         if not created and user.email != email:
