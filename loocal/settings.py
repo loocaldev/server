@@ -99,6 +99,9 @@ REST_FRAMEWORK = {
 
 SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
+    'ALGORITHM': 'RS256',  # Auth0 usa RS256 para firmar los tokens
+    'AUDIENCE': 'https://dev-bgodgyzz8ugzloem.us.auth0.com/api/v2/',  # Debe coincidir con la audiencia configurada en Auth0
+    'ISSUER': 'https://dev-bgodgyzz8ugzloem.us.auth0.com/',  # El dominio de tu cuenta de Auth0
 }
 
 
