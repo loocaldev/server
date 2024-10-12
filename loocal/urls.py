@@ -28,15 +28,13 @@ urlpatterns = [
     path('api/products/',include('products.urls')),
     path('api/orders/',include('orders.urls')),
     path('api/payments/', include('payments.urls')),
-    path('api/profile/', views.get_profile, name='get_profile'),
-    path('api/profile/add-address/', views.add_address, name='add_address'),
-    # re_path('api/login', views.login),
-    # re_path('api/register', views.register),
-    # re_path('api/profile', views.profile),
-    # re_path('api/logout', views.logout),
-    # path('api/add_address/', views.add_address, name='add_address'),
-    # path('api/get_addresses/', views.get_addresses, name='get_addresses'),
-    # path('api/update_user/', views.update_user, name='update_user'),
+    re_path('api/login', views.login),
+    re_path('api/register', views.register),
+    re_path('api/profile', views.profile),
+    re_path('api/logout', views.logout),
+    path('api/add_address/', views.add_address, name='add_address'),
+    path('api/get_addresses/', views.get_addresses, name='get_addresses'),
+    path('api/update_user/', views.update_user, name='update_user'),
 ]
 
 if settings.DEBUG:
