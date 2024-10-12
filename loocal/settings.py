@@ -91,6 +91,17 @@ DATABASES = {
     }
 }
 
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ],
+}
+
+SIMPLE_JWT = {
+    'AUTH_HEADER_TYPES': ('Bearer',),
+}
+
+
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
 
@@ -109,8 +120,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-AUTH0_DOMAIN = 'dev-bgodgyzz8ugzloem.us.auth0.com'  # Ejemplo: 'my-app.auth0.com'
-API_IDENTIFIER = 'https://dev-bgodgyzz8ugzloem.us.auth0.com/api/v2/'  # Identificador de API de Auth0
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.0/topics/i18n/
@@ -156,13 +165,6 @@ CORS_ALLOWED_ORIGINS = [
     'http://44.220.218.144',
 ]
 
-REST_FRAMEWORK = {
-    'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.coreapi.AutoSchema',
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework.authentication.TokenAuthentication',
-    ),
-    'DEFAULT_EXPIRATION_DELTA': datetime.timedelta(hours=1),
-}
 
 SESSION_COOKIE_AGE = 3600
 
