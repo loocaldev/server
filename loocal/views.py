@@ -10,48 +10,42 @@ from django.shortcuts import get_object_or_404
 from .models import UserProfile, Address
 import datetime
 from . import signals
-from .utils import update_auth0_user
+
 
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.authentication import TokenAuthentication
-from rest_framework_jwt.authentication import jwt_decode_handler
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-import json
 
-@api_view(['POST'])
-def auth0_login(request):
-    token = request.headers.get('Authorization').split()[1]
-    payload = jwt_decode_handler(token)
-    auth0_id = payload['sub']
+from .auth import verify_jwt
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated  
 
-    user, created = User.objects.get_or_create(username=auth0_id)
+@api_view(['GET'])
+def protected_route(request):
+    auth_header = request.headers.get('Authorization', None)
+
+    if not auth_header:
+        return Response({'message': 'No se ha proporcionado un token'}, status=401)
+
+    token = auth_header.split()[1]
+
+    try:
+        payload = verify_jwt(token)
+        return Response({'message': 'Acceso permitido', 'user': payload}, status=200)
+    except Exception as e:
+        return Response({'message': str(e)}, status=401)
+    
+
+def synchronize_user(auth0_user_data):
+    email = auth0_user_data.get("email")
+    name = auth0_user_data.get("name")
+    user, created = User.objects.get_or_create(email=email, defaults={"username": email, "first_name": name})
+
     if created:
-        # Si el usuario no existe, lo creamos con los datos de Auth0
-        user.email = payload.get('email')
-        user.first_name = payload.get('given_name', '')
-        user.last_name = payload.get('family_name', '')
-        user.save()
+        # Crear perfil del usuario si no existe
+        UserProfile.objects.create(user=user, profile_picture=auth0_user_data.get("picture"))
 
-        # Crear perfil de usuario personalizado
-        UserProfile.objects.create(user=user, profile_picture=payload.get('picture'))
-
-    # Actualizar el token o sincronizar los datos adicionales
-    return Response({'token': token})
-
-@csrf_exempt
-@api_view(['POST'])
-def auth0_webhook(request):
-    payload = json.loads(request.body)
-    user_id = payload['user_id']
-
-    user = User.objects.get(username=user_id)
-    user.email = payload['email']
-    user.first_name = payload.get('given_name', '')
-    user.last_name = payload.get('family_name', '')
-    user.save()
-
-    return JsonResponse({"status": "success"})
+    return user
 
 
 @api_view(['POST'])
@@ -156,12 +150,8 @@ def update_user(request):
 
     # Guardar los cambios en la base de datos
     user.save()
-    # Actualizar en Auth0 después de guardar el usuario en Django
-    update_auth0_user(user)
-
 
     return Response("User updated successfully", status=status.HTTP_200_OK)
-
 
 @api_view(['PATCH'])
 @authentication_classes([TokenAuthentication])
