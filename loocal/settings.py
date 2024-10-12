@@ -91,20 +91,6 @@ DATABASES = {
     }
 }
 
-REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
-    ],
-}
-
-SIMPLE_JWT = {
-    'AUTH_HEADER_TYPES': ('Bearer',),
-    'ALGORITHM': 'RS256',  # Auth0 usa RS256 para firmar los tokens
-    'AUDIENCE': 'https://dev-bgodgyzz8ugzloem.us.auth0.com/api/v2/',  # Debe coincidir con la audiencia configurada en Auth0
-    'ISSUER': 'https://dev-bgodgyzz8ugzloem.us.auth0.com/',  # El dominio de tu cuenta de Auth0
-}
-
-
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
 
