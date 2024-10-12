@@ -3,10 +3,6 @@ from pathlib import Path
 from dotenv import load_dotenv
 import dj_database_url
 import datetime
-import json
-from jose import jwt  # Importación necesaria para JWT
-import requests
-
 
 load_dotenv()
 
@@ -113,34 +109,8 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-def jwt_get_username_from_payload_handler(payload):
-    """
-    Extrae el nombre de usuario del payload del JWT emitido por Auth0.
-    Auth0 usa el campo 'sub' para el identificador del usuario, que puede incluir un prefijo como 'auth0|'.
-    """
-    return payload.get('sub').replace('|', '.')
-
-REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_jwt.authentication.JSONWebTokenAuthentication',
-    ),
-}
-
-AUTH0_DOMAIN = os.getenv('AUTH0_DOMAIN')  # Asegúrate de tener estas variables en tu .env
-API_IDENTIFIER = os.getenv('API_IDENTIFIER')
-
-# La clave pública para validar el token JWT
-PUBLIC_KEY = requests.get(f'https://{AUTH0_DOMAIN}/.well-known/jwks.json').json()
-ALGORITHMS = ["RS256"]
-
-# Configuración de JWT
-JWT_AUTH = {
-    'JWT_PAYLOAD_GET_USERNAME_HANDLER': jwt_get_username_from_payload_handler,
-    'JWT_SECRET_KEY': PUBLIC_KEY,
-    'JWT_ALGORITHM': 'RS256',
-    'JWT_AUDIENCE': API_IDENTIFIER,
-    'JWT_ISSUER': f'https://{AUTH0_DOMAIN}/',
-}
+AUTH0_DOMAIN = 'dev-bgodgyzz8ugzloem.us.auth0.com'  # Ejemplo: 'my-app.auth0.com'
+API_IDENTIFIER = 'https://dev-bgodgyzz8ugzloem.us.auth0.com/api/v2/'  # Identificador de API de Auth0
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.0/topics/i18n/
