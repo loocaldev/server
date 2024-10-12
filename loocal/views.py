@@ -6,9 +6,9 @@ from .models import UserProfile, Address
 from .serializers import UserSerializer, AddressSerializer
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated])  # Protege esta vista para que solo se acceda con un token válido
 def get_profile(request):
-    user = request.user
+    user = request.user  # request.user estará disponible si el token JWT es válido
     serializer = UserSerializer(user)
     return Response(serializer.data)
 
