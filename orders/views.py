@@ -13,12 +13,8 @@ class OrderView(viewsets.ModelViewSet):
         product_items_data = data.pop('items', [])  # Obtener los productos y sus cantidades
         order_subtotal = 0  # Inicializar subtotal de la orden
 
-        # Crear la orden
+        # Crear la orden sin los datos del cliente (se agregarán luego en el checkout)
         order = Order.objects.create(
-            firstname=data['firstname'],
-            lastname=data['lastname'],
-            email=data['email'],
-            phone=data['phone'],
             custom_order_id=data['custom_order_id'],
             payment_status=data.get('payment_status', 'pending'),
             shipping_status=data.get('shipping_status', 'pending'),
@@ -29,7 +25,7 @@ class OrderView(viewsets.ModelViewSet):
         for item_data in product_items_data:
             product_variation_id = item_data.get('product_variation_id')
             quantity = item_data['quantity']
-            
+
             if product_variation_id:
                 # Si es un producto variable, obtenemos la variación
                 product_variation = ProductVariation.objects.get(id=product_variation_id)
@@ -61,6 +57,21 @@ class OrderView(viewsets.ModelViewSet):
 
         serializer = self.get_serializer(order)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
+    def partial_update(self, request, *args, **kwargs):
+        # Actualización parcial para agregar los datos del cliente
+        order = self.get_object()
+        data = request.data
+
+        order.firstname = data.get('firstname', order.firstname)
+        order.lastname = data.get('lastname', order.lastname)
+        order.email = data.get('email', order.email)
+        order.phone = data.get('phone', order.phone)
+
+        order.save()
+
+        serializer = self.get_serializer(order)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 class OrderByCustomOrderIdAPIView(generics.ListAPIView):
     serializer_class = OrderSerializer

@@ -2,6 +2,7 @@
 from django.db import models
 from products.models import Product, ProductVariation
 
+# orders/models.py
 class Order(models.Model):
     firstname = models.CharField(max_length=50)
     lastname = models.CharField(max_length=50)
@@ -22,6 +23,10 @@ class Order(models.Model):
         default='pending'
     )
 
+    def __str__(self):
+        return f"Order {self.custom_order_id} - {self.firstname} {self.lastname} (${self.subtotal})"
+
+
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, related_name="items", on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
@@ -30,3 +35,6 @@ class OrderItem(models.Model):
     unit_price = models.DecimalField(max_digits=10, decimal_places=2)
     subtotal = models.DecimalField(max_digits=10, decimal_places=2)
     tax = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+
+    def __str__(self):
+        return f"Order {self.order.custom_order_id} - {self.product.name} ({self.quantity} units)"
