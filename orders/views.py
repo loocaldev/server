@@ -2,7 +2,7 @@
 from rest_framework import viewsets, generics, status
 from rest_framework.response import Response
 from .models import Order, OrderItem
-from products.models import ProductVariation
+from products.models import Product, ProductVariation
 from .serializer import OrderSerializer
 
 class OrderView(viewsets.ModelViewSet):
@@ -25,22 +25,31 @@ class OrderView(viewsets.ModelViewSet):
             shipping_status=data.get('shipping_status', 'pending')
         )
 
-        # Procesar los items de la orden
+        # Procesar los items de la orden (fijos y variables)
         for item_data in product_items_data:
-            product_variation_id = item_data['product_variation_id']
+            product_id = item_data['product_id']
             quantity = item_data['quantity']
+            product_variation_id = item_data.get('product_variation_id', None)
 
-            # Obtener la variación del producto
-            product_variation = ProductVariation.objects.get(id=product_variation_id)
+            # Obtener el producto
+            product = Product.objects.get(id=product_id)
+
+            # Obtener la variación (si existe)
+            product_variation = None
+            if product_variation_id:
+                product_variation = ProductVariation.objects.get(id=product_variation_id)
+                unit_price = product_variation.price
+            else:
+                unit_price = product.price
 
             # Calcular el subtotal de este producto (precio * cantidad)
-            unit_price = product_variation.price
             item_subtotal = unit_price * quantity
             order_subtotal += item_subtotal
 
-            # Crear el OrderItem
+            # Crear el OrderItem (variación opcional)
             OrderItem.objects.create(
                 order=order,
+                product=product,
                 product_variation=product_variation,
                 quantity=quantity,
                 unit_price=unit_price,
