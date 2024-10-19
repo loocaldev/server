@@ -1,5 +1,6 @@
-# Models.py
+# orders/models.py
 from django.db import models
+from products.models import ProductVariation
 
 class Order(models.Model):
     firstname = models.CharField(max_length=50)
@@ -9,14 +10,28 @@ class Order(models.Model):
     custom_order_id = models.CharField(max_length=100, unique=True)
     subtotal = models.DecimalField(max_digits=10, decimal_places=2)
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     payment_status = models.CharField(
         max_length=10,
         choices=[('pending', 'Pending'), ('completed', 'Completed'), ('failed', 'Failed')],
         default='pending'
     )
-    
-    # Relación con la variación específica del producto
-    product_variations = models.ManyToManyField('products.ProductVariation')
+    shipping_status = models.CharField(
+        max_length=10,
+        choices=[('pending', 'Pending'), ('shipped', 'Shipped'), ('delivered', 'Delivered')],
+        default='pending'
+    )
 
     def __str__(self):
         return self.custom_order_id
+
+class OrderItem(models.Model):
+    order = models.ForeignKey(Order, related_name="items", on_delete=models.CASCADE)
+    product_variation = models.ForeignKey(ProductVariation, on_delete=models.CASCADE)
+    quantity = models.PositiveIntegerField(default=1)  # Cantidad de cada producto
+    unit_price = models.DecimalField(max_digits=10, decimal_places=2)  # Precio unitario en el momento de la compra
+    subtotal = models.DecimalField(max_digits=10, decimal_places=2)  # Subtotal para este producto
+    tax = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)  # Impuesto, si aplica
+
+    def __str__(self):
+        return f"Order {self.order.custom_order_id} - {self.product_variation.product.name}"

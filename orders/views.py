@@ -1,36 +1,18 @@
-# Views.py
-
+# orders/views.py
 from rest_framework import viewsets, generics, status
 from rest_framework.response import Response
-from .models import Order
+from .models import Order, OrderItem
 from products.models import ProductVariation
 from .serializer import OrderSerializer
-from products.serializer import ProductVariationSerializer
 
 class OrderView(viewsets.ModelViewSet):
     serializer_class = OrderSerializer
     queryset = Order.objects.all()
 
     def create(self, request, *args, **kwargs):
-        """
-        Override the default create method to handle product variations in the order.
-        """
         data = request.data
-        
-        # Verificar si se están enviando variaciones de productos
-        product_variations_data = data.pop('product_variations', [])
-        product_variations = []
-
-        # Validar y obtener las variaciones de productos seleccionadas
-        for variation_data in product_variations_data:
-            try:
-                variation = ProductVariation.objects.get(id=variation_data['id'])
-                product_variations.append(variation)
-            except ProductVariation.DoesNotExist:
-                return Response(
-                    {"error": f"Product variation with ID {variation_data['id']} not found."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+        product_items_data = data.pop('items', [])  # Obtener los productos y sus cantidades
+        order_subtotal = 0  # Inicializar subtotal de la orden
 
         # Crear la orden
         order = Order.objects.create(
@@ -39,18 +21,40 @@ class OrderView(viewsets.ModelViewSet):
             email=data['email'],
             phone=data['phone'],
             custom_order_id=data['custom_order_id'],
-            subtotal=data['subtotal'],
-            payment_status=data.get('payment_status', 'pending')
+            payment_status=data.get('payment_status', 'pending'),
+            shipping_status=data.get('shipping_status', 'pending')
         )
 
-        # Agregar las variaciones de productos a la orden
-        order.product_variations.set(product_variations)
+        # Procesar los items de la orden
+        for item_data in product_items_data:
+            product_variation_id = item_data['product_variation_id']
+            quantity = item_data['quantity']
+
+            # Obtener la variación del producto
+            product_variation = ProductVariation.objects.get(id=product_variation_id)
+
+            # Calcular el subtotal de este producto (precio * cantidad)
+            unit_price = product_variation.price
+            item_subtotal = unit_price * quantity
+            order_subtotal += item_subtotal
+
+            # Crear el OrderItem
+            OrderItem.objects.create(
+                order=order,
+                product_variation=product_variation,
+                quantity=quantity,
+                unit_price=unit_price,
+                subtotal=item_subtotal,
+                tax=0  # Asume que no hay impuestos; si los hay, puedes calcular aquí.
+            )
+
+        # Actualizar el subtotal de la orden
+        order.subtotal = order_subtotal
         order.save()
 
         serializer = self.get_serializer(order)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-# View para obtener ordenes por custom_order_id (opcional)
 class OrderByCustomOrderIdAPIView(generics.ListAPIView):
     serializer_class = OrderSerializer
 
