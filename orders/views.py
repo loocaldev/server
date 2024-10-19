@@ -27,35 +27,32 @@ class OrderView(viewsets.ModelViewSet):
 
         # Procesar los items de la orden (fijos y variables)
         for item_data in product_items_data:
-            product_id = item_data['product_id']
+            product_variation_id = item_data.get('product_variation_id')
             quantity = item_data['quantity']
-            product_variation_id = item_data.get('product_variation_id', None)
 
-            # Obtener el producto
+        # Verificar si es un producto fijo (sin variaciones)
+        if not product_variation_id:
+            # Manejar productos fijos (puedes asumir que esto es el ID del producto fijo)
+            product_id = item_data.get('product_id')  # o product_variation_id en el caso de productos fijos
+            # Aquí, busca el producto fijo y usa el ID
+            # Ejemplo (puede variar según el modelo de productos que tengas)
             product = Product.objects.get(id=product_id)
+            item_subtotal = product.price * quantity
+        else:
+            # Manejar productos variables
+            product_variation = ProductVariation.objects.get(id=product_variation_id)
+            item_subtotal = product_variation.price * quantity
 
-            # Obtener la variación (si existe)
-            product_variation = None
-            if product_variation_id:
-                product_variation = ProductVariation.objects.get(id=product_variation_id)
-                unit_price = product_variation.price
-            else:
-                unit_price = product.price
+        # Suma el subtotal del item a la orden
+        order_subtotal += item_subtotal
 
-            # Calcular el subtotal de este producto (precio * cantidad)
-            item_subtotal = unit_price * quantity
-            order_subtotal += item_subtotal
-
-            # Crear el OrderItem (variación opcional)
-            OrderItem.objects.create(
-                order=order,
-                product=product,
-                product_variation=product_variation,
-                quantity=quantity,
-                unit_price=unit_price,
-                subtotal=item_subtotal,
-                tax=0  # Asume que no hay impuestos; si los hay, puedes calcular aquí.
-            )
+        # Crear el OrderItem para ambos tipos de productos
+        OrderItem.objects.create(
+            order=order,
+            product_variation=product if not product_variation_id else product_variation,
+            quantity=quantity,
+            subtotal=item_subtotal
+        )
 
         # Actualizar el subtotal de la orden
         order.subtotal = order_subtotal
