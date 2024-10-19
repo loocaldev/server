@@ -1,4 +1,3 @@
-# products/views.py
 from rest_framework import viewsets
 from .serializer import (
     ProductSerializer, CategorySerializer, AttributeSerializer, ProductVariationSerializer

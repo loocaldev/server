@@ -1,4 +1,3 @@
-# products/serializers.py
 from rest_framework import serializers
 from .models import Product, Category, Attribute, AttributeOption, ProductVariation
 
@@ -26,18 +25,18 @@ class ProductVariationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ProductVariation
-        fields = ['id', 'sku', 'price', 'stock', 'image', 'attribute_options']  # Se incluye la imagen de la variación
+        fields = ['id', 'sku', 'price', 'stock', 'image', 'attribute_options']  # Incluimos la imagen de la variación
 
 class ProductSerializer(serializers.ModelSerializer):
     categories = CategorySerializer(many=True, read_only=True)
-    variations = ProductVariationSerializer(many=True, read_only=True)
+    variations = ProductVariationSerializer(many=True, read_only=True)  # Mostrar las variaciones con sus atributos
 
     class Meta:
         model = Product
         fields = ['id', 'name', 'image', 'description', 'unit', 'categories', 'is_variable', 'variations', 'created_at', 'updated_at']
 
     def to_representation(self, instance):
-        # Si el producto es variable, no incluimos el precio general
+        # Si el producto no es variable, incluir el precio
         representation = super().to_representation(instance)
         if not instance.is_variable:
             representation['price'] = instance.price

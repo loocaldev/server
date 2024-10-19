@@ -1,4 +1,3 @@
-# products/models.py
 from django.db import models
 from django.core.validators import MinValueValidator
 from django.core.exceptions import ValidationError
@@ -18,8 +17,8 @@ class Product(models.Model):
     name = models.CharField(max_length=200)
     image = models.ImageField(upload_to='product_images/', null=True, blank=True)  # Imagen general para productos fijos
     description = models.TextField(blank=True)
-    unit = models.TextField(blank=True)
-    price = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True)  # Solo se usa si el producto no tiene variaciones
+    unit = models.TextField(blank=True)  # Unidad predeterminada si no es variable
+    price = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True)  # Precio predeterminado para productos no variables
     categories = models.ManyToManyField('Category', related_name='products')
     is_variable = models.BooleanField(default=False)  # Define si el producto es variable
     created_at = models.DateField(auto_now=True)
@@ -33,18 +32,19 @@ class Product(models.Model):
         return self.variations.exists()
     
     def clean(self):
+        # Los productos variables no deben tener un precio general
         if self.is_variable and self.price is not None:
             raise ValidationError("Los productos variables no deben tener un precio general.")
 
 class Attribute(models.Model):
-    name = models.CharField(max_length=100)  # Ejemplo: "Estado de maduración"
+    name = models.CharField(max_length=100)  # Ejemplo: "Maduración", "Presentación"
 
     def __str__(self):
         return self.name
 
 class AttributeOption(models.Model):
     attribute = models.ForeignKey(Attribute, related_name="options", on_delete=models.CASCADE)
-    name = models.CharField(max_length=100)  # Ejemplo: "Verde"
+    name = models.CharField(max_length=100)  # Ejemplo: "Maduro", "Verde", "Por paquete", "Por peso"
 
     def __str__(self):
         return f"{self.attribute.name} - {self.name}"
@@ -52,15 +52,14 @@ class AttributeOption(models.Model):
 class ProductVariation(models.Model):
     product = models.ForeignKey(Product, related_name='variations', on_delete=models.CASCADE)
     sku = models.CharField(max_length=100, unique=True)
-    price = models.DecimalField(max_digits=10, decimal_places=2)  # Cada variación tiene su precio
-    stock = models.PositiveIntegerField(default=0, validators=[MinValueValidator(0)])  # Cada variación tiene su stock
+    price = models.DecimalField(max_digits=10, decimal_places=2)  # Cada variación tiene su precio específico
+    stock = models.PositiveIntegerField(default=0, validators=[MinValueValidator(0)])  # Stock de la variación
     image = models.ImageField(upload_to='variation_images/', null=True, blank=True)  # Imagen específica de la variación
-
-    # Relación ManyToMany para combinar diferentes opciones de atributos
-    attribute_options = models.ManyToManyField(AttributeOption, related_name='variations')
+    attribute_options = models.ManyToManyField(AttributeOption, related_name='variations')  # Combinación de atributos
 
     def __str__(self):
-        return f"{self.product.name} - {self.sku}"
+        options = ", ".join([str(option) for option in self.attribute_options.all()])
+        return f"{self.product.name} - {options} - SKU: {self.sku}"
 
     def get_attribute_summary(self):
         return ", ".join([str(option) for option in self.attribute_options.all()])
