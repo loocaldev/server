@@ -1,4 +1,3 @@
-# orders/views.py
 from rest_framework import viewsets, generics, status
 from rest_framework.response import Response
 from .models import Order, OrderItem
@@ -22,37 +21,39 @@ class OrderView(viewsets.ModelViewSet):
             phone=data['phone'],
             custom_order_id=data['custom_order_id'],
             payment_status=data.get('payment_status', 'pending'),
-            shipping_status=data.get('shipping_status', 'pending')
+            shipping_status=data.get('shipping_status', 'pending'),
+            subtotal=0  # Inicializamos con 0, se actualizará después
         )
 
-        # Procesar los items de la orden (fijos y variables)
+        # Procesar los items de la orden
         for item_data in product_items_data:
             product_variation_id = item_data.get('product_variation_id')
             quantity = item_data['quantity']
+            
+            if product_variation_id:
+                # Si es un producto variable, obtenemos la variación
+                product_variation = ProductVariation.objects.get(id=product_variation_id)
+                unit_price = product_variation.price
+                product = product_variation.product  # Obtener el producto base de la variación
+            else:
+                # Si no tiene variación, es un producto fijo
+                product_id = item_data.get('product_id')
+                product = Product.objects.get(id=product_id)
+                unit_price = product.price
 
-        # Verificar si es un producto fijo (sin variaciones)
-        if not product_variation_id:
-            # Manejar productos fijos (puedes asumir que esto es el ID del producto fijo)
-            product_id = item_data.get('product_id')  # o product_variation_id en el caso de productos fijos
-            # Aquí, busca el producto fijo y usa el ID
-            # Ejemplo (puede variar según el modelo de productos que tengas)
-            product = Product.objects.get(id=product_id)
-            item_subtotal = product.price * quantity
-        else:
-            # Manejar productos variables
-            product_variation = ProductVariation.objects.get(id=product_variation_id)
-            item_subtotal = product_variation.price * quantity
+            # Calcular el subtotal del item
+            item_subtotal = unit_price * quantity
+            order_subtotal += item_subtotal  # Sumar al subtotal total de la orden
 
-        # Suma el subtotal del item a la orden
-        order_subtotal += item_subtotal
-
-        # Crear el OrderItem para ambos tipos de productos
-        OrderItem.objects.create(
-            order=order,
-            product_variation=product if not product_variation_id else product_variation,
-            quantity=quantity,
-            subtotal=item_subtotal
-        )
+            # Crear el OrderItem
+            OrderItem.objects.create(
+                order=order,
+                product=product,
+                product_variation=product_variation if product_variation_id else None,
+                quantity=quantity,
+                unit_price=unit_price,
+                subtotal=item_subtotal
+            )
 
         # Actualizar el subtotal de la orden
         order.subtotal = order_subtotal

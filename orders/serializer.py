@@ -1,18 +1,16 @@
-# orders/serializer.py
 from rest_framework import serializers
 from .models import Order, OrderItem
-from products.models import Product, ProductVariation
 from products.serializer import ProductVariationSerializer
 
 class OrderItemSerializer(serializers.ModelSerializer):
-    product_variation = ProductVariationSerializer(required=False, allow_null=True)  # Permitir variación opcional
+    product_variation = ProductVariationSerializer(required=False, allow_null=True)
 
     class Meta:
         model = OrderItem
-        fields = ['product', 'product_variation', 'quantity', 'unit_price', 'subtotal', 'tax']
+        fields = ['product', 'product_variation', 'quantity', 'unit_price', 'subtotal', 'tax']  # Agregamos `unit_price` y `subtotal`
 
 class OrderSerializer(serializers.ModelSerializer):
-    items = OrderItemSerializer(many=True)  # Incluir los items de la orden
+    items = OrderItemSerializer(many=True)
 
     class Meta:
         model = Order
