@@ -1,12 +1,25 @@
 from rest_framework import viewsets, generics, status
 from rest_framework.response import Response
 from .models import Order, OrderItem
+from rest_framework.exceptions import NotFound
 from products.models import Product, ProductVariation
 from .serializer import OrderSerializer
 
 class OrderView(viewsets.ModelViewSet):
     serializer_class = OrderSerializer
     queryset = Order.objects.all()
+    
+    lookup_field = 'custom_order_id'  # Cambiamos el campo de búsqueda por custom_order_id
+
+    def get_object(self):
+        """
+        Sobrescribe el método get_object para buscar la orden por custom_order_id
+        """
+        custom_order_id = self.kwargs.get('custom_order_id')
+        try:
+            return Order.objects.get(custom_order_id=custom_order_id)
+        except Order.DoesNotExist:
+            raise NotFound(detail="Order not found")
 
     def create(self, request, *args, **kwargs):
         data = request.data
