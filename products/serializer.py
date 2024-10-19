@@ -3,7 +3,7 @@ from rest_framework import serializers
 from .models import Product, Category
 
 class CategorySerializer(serializers.ModelSerializer):
-    product_count = serializers.IntegerField(source='product_count', read_only=True)  # Contar productos asociados
+    product_count = serializers.IntegerField(read_only=True)  # Eliminar el source redundante
 
     class Meta:
         model = Category
