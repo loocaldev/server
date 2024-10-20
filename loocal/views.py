@@ -33,27 +33,21 @@ def login(request):
 
 @api_view(['POST'])
 def register(request):
-    email = request.data.get('email')
-    
-    # Verificar si ya existe un usuario con este email
-    if User.objects.filter(email=email).exists():
-        return Response({"error": "Ya existe una cuenta con este correo electrónico."}, status=status.HTTP_400_BAD_REQUEST)
-    
     user_serializer = UserSerializer(data=request.data)
     
     if user_serializer.is_valid():
         user = user_serializer.save()
-        user.email = email
+        user.email = request.data['username']
         user.set_password(request.data['password'])
         user.save()
 
         profile_data = request.data.get('profile', {})
         UserProfile.objects.create(user=user, **profile_data)
-
+        
         addresses_data = request.data.get('addresses', [])
         for address_data in addresses_data:
             Address.objects.create(user=user, **address_data)
-
+        
         token = Token.objects.create(user=user)
         return Response({'token': token.key, "user": user_serializer.data}, status=status.HTTP_201_CREATED)
     
