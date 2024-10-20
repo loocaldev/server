@@ -192,18 +192,37 @@ DEFAULT_FROM_EMAIL = 'your_email@example.com'
 
 DEBUG = True
 
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+    },
     'handlers': {
+        'file': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(BASE_DIR, 'debug.log'),
+            'formatter': 'verbose',
+        },
         'console': {
             'class': 'logging.StreamHandler',
         },
     },
     'loggers': {
-        'django.db.backends': {
-            'handlers': ['console'],
+        'django': {
+            'handlers': ['file', 'console'],
             'level': 'DEBUG',
+            'propagate': True,
+        },
+        'django.db.backends': {
+            'handlers': ['file', 'console'],
+            'level': 'DEBUG',
+            'propagate': False,
         },
     },
 }
