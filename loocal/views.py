@@ -33,35 +33,25 @@ def login(request):
 
 @api_view(['POST'])
 def register(request):
-    email = request.data.get('email')  # Obtener el email desde la solicitud
-    password = request.data.get('password')
+    user_serializer = UserSerializer(data=request.data)
+    
+    if user_serializer.is_valid():
+        user = user_serializer.save()
+        user.email = request.data['username']
+        user.set_password(request.data['password'])
+        user.save()
 
-    # Verificar si ya existe un usuario con ese email
-    if User.objects.filter(email=email).exists():
-        return Response({"username": ["Ya existe una cuenta con este correo electrónico."]}, status=status.HTTP_400_BAD_REQUEST)
-
-    # Crear el usuario, asegurándose de que el email esté correctamente asignado
-    user = User(
-        email=email,
-        username=email  # Usamos el email también como username
-    )
-    user.set_password(password)  # Asignar la contraseña al usuario
-    user.save()  # Guardar el usuario en la base de datos
-
-    # Crear el perfil de usuario asociado
-    profile_data = request.data.get('profile', {})
-    UserProfile.objects.create(user=user, **profile_data)
-
-    # Crear las direcciones asociadas (si las hay)
-    addresses_data = request.data.get('addresses', [])
-    for address_data in addresses_data:
-        Address.objects.create(user=user, **address_data)
-
-    # Crear el token de autenticación para el usuario
-    token = Token.objects.create(user=user)
-
-    # Devolver la respuesta con el token y los datos del usuario
-    return Response({'token': token.key, 'user': UserSerializer(user).data}, status=status.HTTP_201_CREATED)
+        profile_data = request.data.get('profile', {})
+        UserProfile.objects.create(user=user, **profile_data)
+        
+        addresses_data = request.data.get('addresses', [])
+        for address_data in addresses_data:
+            Address.objects.create(user=user, **address_data)
+        
+        token = Token.objects.create(user=user)
+        return Response({'token': token.key, "user": user_serializer.data}, status=status.HTTP_201_CREATED)
+    
+    return Response(user_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['GET'])
 @authentication_classes([TokenAuthentication])
