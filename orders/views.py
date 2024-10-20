@@ -96,7 +96,7 @@ class OrderView(viewsets.ModelViewSet):
                     product = Product.objects.get(id=product_id)
                     unit_price = product.price
 
-                item_subtotal = unit_price * quantity
+                item_subtotal = (unit_price or 0) * (quantity or 0)
                 order_subtotal += item_subtotal
 
                 # Crear el OrderItem
