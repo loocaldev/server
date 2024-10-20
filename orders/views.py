@@ -72,20 +72,26 @@ class OrderView(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     
     def partial_update(self, request, *args, **kwargs):
-        # Actualización parcial para agregar los datos del cliente
+        # Obtén la orden por su custom_order_id
         order = self.get_object()
         data = request.data
 
+        # Debug para verificar el valor de payment_status recibido
+        print(f"Payment status recibido: {data.get('payment_status')}")
+
+        # Actualiza los datos de la orden
         order.firstname = data.get('firstname', order.firstname)
         order.lastname = data.get('lastname', order.lastname)
         order.email = data.get('email', order.email)
         order.phone = data.get('phone', order.phone)
-        
+    
         # Asegúrate de actualizar el estado de pago
         order.payment_status = data.get('payment_status', order.payment_status)
 
+        # Guarda los cambios
         order.save()
 
+        # Serializa la orden actualizada
         serializer = self.get_serializer(order)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
