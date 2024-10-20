@@ -84,22 +84,29 @@ class OrderView(viewsets.ModelViewSet):
         order_subtotal = 0
         for item_data in product_items_data:
             product_variation_id = item_data.get('product_variation_id')
+            product_id = item_data.get('product_id')
             quantity = item_data['quantity']
+            unit_price = None
 
             try:
+                # Manejo para productos con variaciones
                 if product_variation_id:
                     product_variation = ProductVariation.objects.get(id=product_variation_id)
                     unit_price = product_variation.price
                     product = product_variation.product
+
+                    if unit_price is None:
+                        return Response({"error": "El precio de la variación del producto no está disponible."}, status=status.HTTP_400_BAD_REQUEST)
+
+                # Manejo para productos simples
                 else:
-                    product_id = item_data.get('product_id')
                     product = Product.objects.get(id=product_id)
                     unit_price = product.price
 
-                # Asegurarse de que unit_price no sea None
-                if unit_price is None:
-                    return Response({"error": "El precio del producto no está disponible."}, status=status.HTTP_400_BAD_REQUEST)
+                    if unit_price is None:
+                        return Response({"error": "El precio del producto no está disponible."}, status=status.HTTP_400_BAD_REQUEST)
 
+                # Calcular subtotal de cada item
                 item_subtotal = unit_price * quantity
                 order_subtotal += item_subtotal
 
@@ -112,9 +119,10 @@ class OrderView(viewsets.ModelViewSet):
                     unit_price=unit_price,
                     subtotal=item_subtotal
                 )
+
             except (Product.DoesNotExist, ProductVariation.DoesNotExist):
                 return Response({"error": "Producto o variación no válido."}, status=status.HTTP_400_BAD_REQUEST)
-    
+
         # Actualizar el subtotal de la orden
         order.subtotal = order_subtotal
         order.save()
