@@ -79,7 +79,10 @@ WSGI_APPLICATION = 'loocal.wsgi.application'
 #     'default': dj_database_url.config(default=os.environ.get('DATABASE_URL'))
 # }
 
+
+WOMPI_PUBLIC_KEY = os.getenv('WOMPI_PUBLIC_KEY')
 WOMPI_PRIVATE_KEY = os.getenv('WOMPI_PRIVATE_KEY')
+WOMPI_API_BASE = 'https://sandbox.wompi.co/v1'
 
 DATABASES = {
     'default': {

@@ -1,7 +1,9 @@
-from django.urls import path
+from django.urls import path, include
+from rest_framework.documentation import include_docs_urls
+from rest_framework import routers
+from payments import views
 from . import views
 
 urlpatterns = [
-    path('tokenize_card/', views.create_payment_token, name='tokenize_card'),
-    path('create_transaction/', views.create_wompi_transaction, name='create_transaction'),
+    path('generate_integrity_hash/', views.generate_integrity_hash, name='generate_integrity_hash'),
 ]
