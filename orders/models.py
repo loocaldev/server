@@ -1,6 +1,7 @@
 # orders/models.py
 from django.db import models
 from products.models import Product, ProductVariation
+from loocal.models import Address 
 
 # orders/models.py
 class Order(models.Model):
@@ -22,6 +23,11 @@ class Order(models.Model):
         choices=[('pending', 'Pending'), ('shipped', 'Shipped'), ('delivered', 'Delivered')],
         default='pending'
     )
+    address = models.ForeignKey(Address, on_delete=models.SET_NULL, null=True, related_name='orders')
+
+    # Campos para la fecha y hora de entrega
+    delivery_date = models.DateField(null=True, blank=True)
+    delivery_time = models.TimeField(null=True, blank=True)
 
     def __str__(self):
         return f"Order {self.custom_order_id} - {self.firstname} {self.lastname} (${self.subtotal})"
