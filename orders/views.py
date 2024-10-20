@@ -87,6 +87,7 @@ class OrderView(viewsets.ModelViewSet):
             product_id = item_data.get('product_id')
             quantity = item_data['quantity']
             unit_price = None
+            product_variation = None
 
             try:
                 # Manejo para productos con variaciones
