@@ -10,7 +10,7 @@ class UserProfile(models.Model):
         return self.user.username
 
 class Address(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='addresses')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='addresses', null=True, blank=True)  # Hacemos la relación opcional
     street = models.CharField(max_length=255)
     city = models.CharField(max_length=100)
     state = models.CharField(max_length=100)
