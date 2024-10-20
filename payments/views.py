@@ -13,13 +13,13 @@ def generate_integrity_hash(request):
     amount = order_data.get('amount')
     currency = order_data.get('currency', 'COP')
     
-    # Obtener el secreto de integridad desde variables de entorno
-    secret_key = os.getenv('WOMPI_INTEGRITY_SECRET')  # Configura esto en tu entorno
-
-    # Generar la cadena concatenada como exige Wompi
+    # Llave de integridad (puede venir de tus variables de entorno)
+    secret_key = "test_integrity_r7mbaEF8A7XF8ex9T5O0Ul0tAhCdhUDM"  # O usar os.getenv('WOMPI_INTEGRITY_SECRET')
+    
+    # Concatenar los valores en el orden correcto
     concatenated_string = f"{order_id}{amount}{currency}{secret_key}"
     
-    # Generar el hash SHA256 de la cadena concatenada
+    # Generar el hash SHA-256
     sha256_hash = hashlib.sha256(concatenated_string.encode()).hexdigest()
     
     # Devolver el hash de integridad como JSON
