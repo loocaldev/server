@@ -80,6 +80,9 @@ class OrderView(viewsets.ModelViewSet):
         order.lastname = data.get('lastname', order.lastname)
         order.email = data.get('email', order.email)
         order.phone = data.get('phone', order.phone)
+        
+        # Asegúrate de actualizar el estado de pago
+        order.payment_status = data.get('payment_status', order.payment_status)
 
         order.save()
 
