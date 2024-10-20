@@ -23,4 +23,4 @@ def generate_integrity_hash(request):
     sha256_hash = hashlib.sha256(concatenated_string.encode()).hexdigest()
     
     # Devolver el hash de integridad como JSON
-    return JsonResponse({'hash': sha256_hash})
+    return JsonResponse({'hash': sha256_hash, 'concatened':concatenated_string})
