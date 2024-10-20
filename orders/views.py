@@ -96,7 +96,11 @@ class OrderView(viewsets.ModelViewSet):
                     product = Product.objects.get(id=product_id)
                     unit_price = product.price
 
-                item_subtotal = (unit_price or 0) * (quantity or 0)
+                # Asegurarse de que unit_price no sea None
+                if unit_price is None:
+                    return Response({"error": "El precio del producto no está disponible."}, status=status.HTTP_400_BAD_REQUEST)
+
+                item_subtotal = unit_price * quantity
                 order_subtotal += item_subtotal
 
                 # Crear el OrderItem
@@ -110,7 +114,7 @@ class OrderView(viewsets.ModelViewSet):
                 )
             except (Product.DoesNotExist, ProductVariation.DoesNotExist):
                 return Response({"error": "Producto o variación no válido."}, status=status.HTTP_400_BAD_REQUEST)
-
+    
         # Actualizar el subtotal de la orden
         order.subtotal = order_subtotal
         order.save()
