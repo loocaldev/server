@@ -31,6 +31,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'coreapi',
     'whitenoise.runserver_nostatic',
+    'storages',
     'mercadopago',
     'products',
     'orders',
@@ -160,7 +161,6 @@ AWS_S3_OBJECT_PARAMETERS = {
 # Media files (uploaded by users)
 MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/media/'
 # MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
-
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
