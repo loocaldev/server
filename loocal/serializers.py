@@ -9,6 +9,8 @@ class AddressSerializer(serializers.ModelSerializer):
         fields = ['id', 'street', 'city', 'state', 'postal_code', 'country', 'is_default']
 
 class UserProfileSerializer(serializers.ModelSerializer):
+    profile_picture = serializers.ImageField(required=False)  # Asegúrate de que es opcional
+
     class Meta:
         model = UserProfile
         fields = ['profile_picture']
@@ -20,14 +22,13 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'username', 'email', 'password', 'profile', 'addresses']
-        
+
     def update(self, instance, validated_data):
         profile_data = validated_data.pop('profile', {})
         addresses_data = validated_data.pop('addresses', [])
 
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
-
         instance.save()
 
         profile = instance.profile

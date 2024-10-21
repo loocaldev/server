@@ -1,5 +1,5 @@
 # views.py
-from rest_framework.decorators import api_view, authentication_classes, permission_classes
+from rest_framework.decorators import api_view, authentication_classes, permission_classes, parser_classes
 from django.contrib.auth import authenticate, login as django_login
 from rest_framework.response import Response
 from .serializers import UserSerializer, UserProfileSerializer, AddressSerializer
@@ -10,7 +10,7 @@ from django.shortcuts import get_object_or_404
 from .models import UserProfile, Address
 import datetime
 from . import signals
-
+from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.authentication import TokenAuthentication
 
@@ -94,8 +94,10 @@ def logout(request):
 @api_view(['PATCH'])
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
+@parser_classes([MultiPartParser, FormParser])  # Para manejar archivos
 def update_user(request):
-    user = request.user  # Obtener el objeto User asociado al usuario actual
+    user = request.user
+    profile = user.userprofile
 
     # Recopilar los datos que deseas actualizar desde la solicitud
     new_email = request.data.get('email')
@@ -106,7 +108,7 @@ def update_user(request):
     # Actualizar los campos necesarios del objeto User
     if new_email:
         user.email = new_email
-        user.username = new_email
+        user.username = new_email  # Usamos el email como username
     if new_password:
         user.set_password(new_password)
     if new_first_name:
@@ -114,10 +116,14 @@ def update_user(request):
     if new_last_name:
         user.last_name = new_last_name
 
-    # Guardar los cambios en la base de datos
     user.save()
 
-    return Response("User updated successfully", status=status.HTTP_200_OK)
+    # Si se ha enviado una imagen de perfil
+    if 'profile_picture' in request.FILES:  # Verificamos si hay un archivo en la solicitud
+        profile.profile_picture = request.FILES['profile_picture']
+    profile.save()
+
+    return Response({"message": "Perfil actualizado exitosamente"}, status=status.HTTP_200_OK)
 
 @api_view(['PATCH'])
 @authentication_classes([TokenAuthentication])
