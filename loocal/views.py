@@ -1,5 +1,6 @@
 # views.py
 from rest_framework.decorators import api_view, authentication_classes, permission_classes, parser_classes
+from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import authenticate, login as django_login
 from rest_framework.response import Response
 from .serializers import UserSerializer, UserProfileSerializer, AddressSerializer
@@ -14,6 +15,7 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.authentication import TokenAuthentication
 
+@csrf_exempt
 @api_view(['POST'])
 def login(request):
     user = authenticate(username=request.data['username'], password=request.data['password'])
