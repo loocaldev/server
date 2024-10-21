@@ -9,16 +9,9 @@ class AddressSerializer(serializers.ModelSerializer):
         fields = ['id', 'street', 'city', 'state', 'postal_code', 'country', 'is_default']
 
 class UserProfileSerializer(serializers.ModelSerializer):
-    profile_picture = serializers.SerializerMethodField()
-
     class Meta:
         model = UserProfile
         fields = ['profile_picture']
-
-    def get_profile_picture(self, obj):
-        if obj.profile_picture:
-            return obj.profile_picture.url  # Devolver la URL completa de la imagen
-        return None
 
 class UserSerializer(serializers.ModelSerializer):
     profile = UserProfileSerializer(required=False)
@@ -27,13 +20,14 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'username', 'email', 'password', 'profile', 'addresses']
-
+        
     def update(self, instance, validated_data):
         profile_data = validated_data.pop('profile', {})
         addresses_data = validated_data.pop('addresses', [])
 
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
+
         instance.save()
 
         profile = instance.profile
