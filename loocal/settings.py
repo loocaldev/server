@@ -152,6 +152,7 @@ AWS_S3_REGION_NAME = os.getenv('AWS_S3_REGION_NAME', 'us-east-1')  # Puedes camb
 AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
 AWS_S3_FILE_OVERWRITE = False
 AWS_DEFAULT_ACL = None  # Para que los archivos no tengan un ACL público por defecto
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10 MB
 
 # Configurar Django-Storages para usar S3
 DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
