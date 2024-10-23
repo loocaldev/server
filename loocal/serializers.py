@@ -16,7 +16,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
         fields = ['profile_picture']
 
 class UserSerializer(serializers.ModelSerializer):
-    profile = UserProfileSerializer(required=False)
+    userprofile = UserProfileSerializer(required=False)
     addresses = AddressSerializer(many=True, required=False)
 
     class Meta:
