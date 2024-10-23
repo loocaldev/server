@@ -10,7 +10,7 @@ from django.shortcuts import get_object_or_404
 from .models import UserProfile, Address
 import datetime
 from . import signals
-from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.authentication import TokenAuthentication
 
@@ -100,7 +100,7 @@ def logout(request):
 @api_view(['PATCH'])
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
-@parser_classes([MultiPartParser, FormParser])  # Para manejar archivos
+@parser_classes([MultiPartParser, FormParser, JSONParser])  # Para manejar archivos
 def update_user(request):
     user = request.user
     profile = user.userprofile
