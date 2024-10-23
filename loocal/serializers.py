@@ -16,12 +16,12 @@ class UserProfileSerializer(serializers.ModelSerializer):
         fields = ['profile_picture']
 
 class UserSerializer(serializers.ModelSerializer):
-    profile = UserProfileSerializer(required=True)
+    profile = UserProfileSerializer(required=False)
     addresses = AddressSerializer(many=True, required=False)
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'password', 'profile', 'addresses']
+        fields = ['id', 'username', 'email', 'password', 'userprofile', 'addresses']
         
 
     def update(self, instance, validated_data):
