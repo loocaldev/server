@@ -53,11 +53,17 @@ def register(request):
     
     return Response(user_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
 @api_view(['GET'])
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
 def profile(request):
     user = request.user
+
+    # Asegurarse de que el perfil existe
+    if not hasattr(user, 'userprofile'):
+        UserProfile.objects.create(user=user)  # Crear un perfil si no existe
+
     serializer = UserSerializer(instance=user)
     return Response(serializer.data)
 
