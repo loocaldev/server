@@ -141,7 +141,14 @@ def update_user(request):
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
 def update_address(request, pk):
-    address = get_object_or_404(Address, pk=pk, user=request.user)
+    user = request.user
+    address = get_object_or_404(Address, pk=pk, user=user)
+    is_default = request.data.get("is_default", False)
+
+    if is_default:
+        # Si se marca esta dirección como principal, desmarcar otras del usuario
+        Address.objects.filter(user=user, is_default=True).update(is_default=False)
+    
     serializer = AddressSerializer(instance=address, data=request.data, partial=True)
     if serializer.is_valid():
         serializer.save()
