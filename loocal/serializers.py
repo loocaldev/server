@@ -10,10 +10,13 @@ class AddressSerializer(serializers.ModelSerializer):
 
 class UserProfileSerializer(serializers.ModelSerializer):
     profile_picture = serializers.ImageField(required=False)  # Asegúrate de que es opcional
+    document_type = serializers.CharField(required=False)  # Agregar campo
+    document_number = serializers.CharField(required=False)  # Agregar campo
+    phone_number = serializers.CharField(required=False)  # Agregar campo
 
     class Meta:
         model = UserProfile
-        fields = ['profile_picture']
+        fields = ['profile_picture', 'document_type', 'document_number', 'phone_number']
 
 class UserSerializer(serializers.ModelSerializer):
     userprofile = UserProfileSerializer(required=False)
