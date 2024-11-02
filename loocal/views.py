@@ -100,34 +100,40 @@ def logout(request):
 @api_view(['PATCH'])
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
-@parser_classes([MultiPartParser, FormParser, JSONParser])  # Para manejar archivos
+@parser_classes([MultiPartParser, FormParser, JSONParser])
 def update_user(request):
     user = request.user
-    profile = user.userprofile
 
-    # Recopilar los datos que deseas actualizar desde la solicitud
+    # Actualizar campos de User
+    user.first_name = request.data.get('first_name', user.first_name)
+    user.last_name = request.data.get('last_name', user.last_name)
     new_email = request.data.get('email')
-    new_password = request.data.get('password')
-    new_first_name = request.data.get('first_name')
-    new_last_name = request.data.get('last_name')
-
-    # Actualizar los campos necesarios del objeto User
     if new_email:
         user.email = new_email
         user.username = new_email  # Usamos el email como username
+
+    # Actualizar la contraseña si se envía
+    new_password = request.data.get('password')
     if new_password:
         user.set_password(new_password)
-    if new_first_name:
-        user.first_name = new_first_name
-    if new_last_name:
-        user.last_name = new_last_name
 
+    # Guardar cambios en el modelo User
     user.save()
 
-    # Si se ha enviado una imagen de perfil
-    if 'profile_picture' in request.FILES:  # Verificamos si hay un archivo en la solicitud
-        profile.profile_picture = request.FILES['profile_picture']
-    profile.save()
+    # Procesar datos de UserProfile
+    profile_data = request.data.get('profile', {})
+    if profile_data:
+        profile, created = UserProfile.objects.get_or_create(user=user)
+        profile.document_type = profile_data.get('document_type', profile.document_type)
+        profile.document_number = profile_data.get('document_number', profile.document_number)
+        profile.phone_number = profile_data.get('phone_number', profile.phone_number)
+
+        # Si se envía una imagen de perfil
+        if 'profile_picture' in request.FILES:
+            profile.profile_picture = request.FILES['profile_picture']
+
+        # Guardar cambios en UserProfile
+        profile.save()
 
     return Response({"message": "Perfil actualizado exitosamente"}, status=status.HTTP_200_OK)
 
