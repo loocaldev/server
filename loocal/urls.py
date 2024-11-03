@@ -37,6 +37,7 @@ urlpatterns = [
     path('api/get_addresses/', views.get_addresses, name='get_addresses'),
     path('api/delete_address/<int:pk>/', views.delete_address, name='delete_address'),
     path('api/update_address/<int:pk>/', views.update_address, name='update_address'),
+    path('api/change_password/', views.change_password, name='change_password'),
 ]
 
 if settings.DEBUG:
