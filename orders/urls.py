@@ -8,7 +8,7 @@ router = routers.DefaultRouter()
 router.register(r'', views.OrderView)  # Sin prefijo
 
 urlpatterns = [
-    path('api/v1/orders/customid/<str:custom_order_id>/', views.OrderByCustomOrderIdAPIView.as_view(), name='order-by-custom-order-id'),
-    path('api/v1/orders/', include(router.urls)),  # Ajustar la URL principal
+    path('api/orders/customid/<str:custom_order_id>/', views.OrderByCustomOrderIdAPIView.as_view(), name='order-by-custom-order-id'),
+    path('api/orders/', include(router.urls)),  # Ajustar la URL principal
     path("docs/", include_docs_urls(title="Orders API"))
 ]
