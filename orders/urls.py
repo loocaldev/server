@@ -3,12 +3,12 @@ from rest_framework.documentation import include_docs_urls
 from rest_framework import routers
 from orders import views
 
-# No incluyas el prefijo `orders` aquí
+# Configura el router sin prefijo adicional
 router = routers.DefaultRouter()
-router.register(r'', views.OrderView)  # Sin prefijo
+router.register(r'', views.OrderView, basename='order')
 
 urlpatterns = [
-    path('api/orders/customid/<str:custom_order_id>/', views.OrderByCustomOrderIdAPIView.as_view(), name='order-by-custom-order-id'),
-    path('api/orders/', include(router.urls)),  # Ajustar la URL principal
-    path("docs/", include_docs_urls(title="Orders API"))
+    path('customid/<str:custom_order_id>/', views.OrderByCustomOrderIdAPIView.as_view(), name='order-by-custom-order-id'),
+    path('', include(router.urls)),  # Incluye el router sin prefijo adicional
+    path("docs/", include_docs_urls(title="Orders API")),
 ]

@@ -26,7 +26,7 @@ from . import views
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/products/',include('products.urls')),
-    path('api/orders/',include('orders.urls')),
+    path('api/orders/', include('orders.urls')), 
     path('api/payments/', include('payments.urls')),
     re_path('api/login', views.login),
     re_path('api/register', views.register),
