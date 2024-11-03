@@ -5,10 +5,11 @@ from loocal.serializers import AddressSerializer
 
 class OrderItemSerializer(serializers.ModelSerializer):
     product_variation = ProductVariationSerializer(required=False, allow_null=True)
+    product_name = serializers.CharField(source='product.name', read_only=True)
 
     class Meta:
         model = OrderItem
-        fields = ['product', 'product_variation', 'quantity', 'unit_price', 'subtotal', 'tax']  # Agregamos `unit_price` y `subtotal`
+        fields = ['product', 'product_name', 'product_variation', 'quantity', 'unit_price', 'subtotal', 'tax']  # Agregamos `unit_price` y `subtotal`
 
 class OrderSerializer(serializers.ModelSerializer):
     address = AddressSerializer()  # Serializamos la dirección
