@@ -59,7 +59,8 @@ class ProductVariation(models.Model):
     
     def __str__(self):
         options = ", ".join([str(option) for option in self.attribute_options.all()])
-        return f"{self.product.name} - {options} - SKU: {self.sku} - {self.unit_quantity} {self.unit_type.name}"
+        unit_type_name = self.unit_type.name if self.unit_type else "Sin Tipo"
+        return f"{self.product.name} - {options} - SKU: {self.sku} - {self.unit_quantity} {unit_type_name}"
 
     @property
     def final_price(self):
