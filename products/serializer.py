@@ -30,7 +30,7 @@ class ProductVariationSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductVariation
         fields = [
-            'id', 'sku', 'price', 'final_price', 'stock', 'image', 'attribute_options', 'is_on_promotion', 'discount_type', 'discount_value'
+            'id', 'sku', 'price', 'final_price', 'stock', 'image', 'attribute_options', 'is_on_promotion', 'discount_type', 'discount_value', 'unit_type', 'unit_quantity'
         ]
 
 class ProductSerializer(serializers.ModelSerializer):
