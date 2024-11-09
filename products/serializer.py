@@ -41,11 +41,22 @@ class ProductSerializer(serializers.ModelSerializer):
         model = Product
         fields = [
             'id', 'name', 'image', 'description', 'price', 'categories', 'is_variable',
-            'variations', 'created_at', 'updated_at'
+            'variations','converted_quantity', 'created_at', 'updated_at'
         ]
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
+
+        # Calcular la cantidad convertida, si la unidad se especifica en el contexto
+        requested_unit = self.context.get('requested_unit')
+        if requested_unit:
+            representation['converted_quantity'] = instance.get_converted_quantity(to_unit_name=requested_unit)
+        else:
+            # Si no hay una unidad solicitada, muestra la cantidad en su unidad base
+            representation['converted_quantity'] = instance.unit_quantity
+
+        # Si el producto no es variable, incluir el precio en la representación
         if not instance.is_variable:
             representation['price'] = instance.price
+
         return representation
