@@ -36,6 +36,8 @@ class ProductVariationSerializer(serializers.ModelSerializer):
 class ProductSerializer(serializers.ModelSerializer):
     categories = CategorySerializer(many=True, read_only=True)
     variations = ProductVariationSerializer(many=True, read_only=True)
+    unit_type = serializers.StringRelatedField()
+    unit_quantity = serializers.DecimalField(max_digits=6, decimal_places=2)
     converted_quantity = serializers.SerializerMethodField()  # Definir como SerializerMethodField
 
     class Meta:
