@@ -36,6 +36,7 @@ class ProductVariationSerializer(serializers.ModelSerializer):
 class ProductSerializer(serializers.ModelSerializer):
     categories = CategorySerializer(many=True, read_only=True)
     variations = ProductVariationSerializer(many=True, read_only=True)
+    converted_quantity = serializers.SerializerMethodField()  # Definir como SerializerMethodField
 
     class Meta:
         model = Product
@@ -44,21 +45,20 @@ class ProductSerializer(serializers.ModelSerializer):
             'variations', 'created_at', 'updated_at', 'unit_type', 'unit_quantity', 'converted_quantity'
         ]
 
-    def to_representation(self, instance):
-        representation = super().to_representation(instance)
-
-        # Calcular la cantidad convertida usando el contexto
+    def get_converted_quantity(self, instance):
+        # Obtener la unidad solicitada del contexto
         requested_unit = self.context.get('requested_unit')
         if requested_unit:
             try:
-                representation['converted_quantity'] = instance.get_converted_quantity(to_unit_name=requested_unit)
+                return instance.get_converted_quantity(to_unit_name=requested_unit)
             except ValidationError as e:
-                representation['converted_quantity'] = str(e)  # Muestra el error si la unidad no es válida
-        else:
-            # Si no se solicita una unidad, muestra la cantidad en su unidad base
-            representation['converted_quantity'] = instance.unit_quantity
+                return str(e)  # Muestra el error si la unidad no es válida
+        return instance.unit_quantity  # Valor base si no hay unidad solicitada
 
-        # Incluir el precio si el producto no es variable
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        
+        # Sobreescribir el precio si el producto no es variable
         if not instance.is_variable:
             representation['price'] = instance.price
 
