@@ -1,6 +1,6 @@
 # admin.py
 from django.contrib import admin
-from .models import Product, Category, Attribute, AttributeOption, ProductVariation
+from .models import Product, Category, Attribute, AttributeOption, ProductVariation, UnitType, UnitTypeAggregation
 
 class AttributeOptionInline(admin.TabularInline):
     model = AttributeOption
@@ -29,8 +29,14 @@ class ProductVariationAdmin(admin.ModelAdmin):
         'product', 'sku', 'price', 'stock', 'image', 'attribute_options', 'unit_type', 
         'unit_quantity', 'contenido_peso', 'is_on_promotion', 'discount_type', 'discount_value', 'final_price'
     ]
+    
+class UnitTypeAggregationAdmin(admin.ModelAdmin):
+    list_display = ('unit_type', 'name', 'conversion_factor')
+    list_filter = ('unit_type',)
 
 admin.site.register(Product, ProductAdmin)
 admin.site.register(Category)
 admin.site.register(Attribute, AttributeAdmin)
 admin.site.register(ProductVariation, ProductVariationAdmin)
+admin.site.register(UnitType)
+admin.site.register(UnitTypeAggregation, UnitTypeAggregationAdmin)
