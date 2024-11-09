@@ -1,6 +1,6 @@
 # serializers.py
 from rest_framework import serializers
-from .models import Product, Category, Attribute, AttributeOption, ProductVariation
+from .models import Product, Category, Attribute, AttributeOption, ProductVariation, UnitTypeAggregation
 
 class CategorySerializer(serializers.ModelSerializer):
     product_count = serializers.IntegerField(read_only=True)
@@ -29,13 +29,13 @@ class ProductVariationSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductVariation
         fields = [
-            'id', 'sku', 'price', 'final_price', 'stock', 'image', 'attribute_options',
-            'unit_type', 'unit_quantity', 'is_on_promotion', 'discount_type', 'discount_value'
+            'id', 'sku', 'price', 'final_price', 'stock', 'image', 'attribute_options', 'is_on_promotion', 'discount_type', 'discount_value'
         ]
 
 class ProductSerializer(serializers.ModelSerializer):
     categories = CategorySerializer(many=True, read_only=True)
     variations = ProductVariationSerializer(many=True, read_only=True)
+    converted_quantity = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
 
     class Meta:
         model = Product

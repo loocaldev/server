@@ -8,6 +8,24 @@ class Category(models.Model):
 
     def __str__(self):
         return self.name
+    
+class UnitType(models.Model):
+    name = models.CharField(max_length=50)  # Ejemplo: "Peso", "Unidad", "Volumen"
+
+    def __str__(self):
+        return self.name
+
+class UnitTypeAggregation(models.Model):
+    """
+    Define las conversiones para cada tipo de unidad.
+    Ejemplo: gramos, kilogramos, libras para `Peso`.
+    """
+    unit_type = models.ForeignKey(UnitType, on_delete=models.CASCADE)
+    name = models.CharField(max_length=50)  # Ejemplo: "gramo", "kilogramo", "libra"
+    conversion_factor = models.DecimalField(max_digits=10, decimal_places=4)  # Factor para convertir a la unidad base (ej., gramos)
+
+    def __str__(self):
+        return f"{self.name} ({self.unit_type.name})"
 
 class Product(models.Model):
     name = models.CharField(max_length=200)
@@ -18,15 +36,26 @@ class Product(models.Model):
     categories = models.ManyToManyField(Category, related_name='products')
     created_at = models.DateField(auto_now=True)
     updated_at = models.DateField(auto_now=True)
+    
+    # Unidades
+    unit_type = models.ForeignKey(UnitType, on_delete=models.CASCADE, null=True, blank=True)
+    unit_quantity = models.DecimalField(max_digits=6, decimal_places=2, validators=[MinValueValidator(0.01)], null=True, blank=True)
+
+    # Promociones en productos no variables
+    is_on_promotion = models.BooleanField(default=False)
+    discount_type = models.CharField(max_length=10, choices=[('percentage', 'Percentage'), ('value', 'Value')], null=True, blank=True)
+    discount_value = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
 
     def __str__(self):
         return self.name
 
-class UnitType(models.Model):
-    name = models.CharField(max_length=50)  # Ejemplo: "Peso", "Unidad", "Volumen"
+    @property
+    def final_price(self):
+        if not self.is_variable and self.is_on_promotion and self.discount_value:
+            discount = (self.discount_value / 100) * self.price if self.discount_type == 'percentage' else self.discount_value
+            return max(self.price - discount, 0)
+        return self.price
 
-    def __str__(self):
-        return self.name
 
 class Attribute(models.Model):
     name = models.CharField(max_length=100)
@@ -74,6 +103,20 @@ class ProductVariation(models.Model):
                 discount = 0
             return max(self.price - discount, 0)  # Asegura que el precio no sea negativo
         return self.price
+    
+    def convert_quantity(self, quantity, to_unit_name):
+        """
+        Convierte una cantidad dada a una unidad específica usando el factor de conversión.
+        :param quantity: cantidad en la unidad base (por ejemplo, gramos)
+        :param to_unit_name: nombre de la unidad a convertir (por ejemplo, "kilogramos")
+        :return: cantidad convertida
+        """
+        try:
+            aggregation = UnitTypeAggregation.objects.get(unit_type=self.unit_type, name=to_unit_name)
+            return quantity / aggregation.conversion_factor
+        except UnitTypeAggregation.DoesNotExist:
+            raise ValueError("La unidad especificada no es válida para este tipo de producto")
+
 
     def save(self, *args, **kwargs):
         # Crea o asigna la categoría de promoción si está en promoción
