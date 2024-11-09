@@ -1,5 +1,6 @@
 # serializers.py
 from rest_framework import serializers
+from django.core.exceptions import ValidationError
 from .models import Product, Category, Attribute, AttributeOption, ProductVariation, UnitTypeAggregation
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -35,27 +36,29 @@ class ProductVariationSerializer(serializers.ModelSerializer):
 class ProductSerializer(serializers.ModelSerializer):
     categories = CategorySerializer(many=True, read_only=True)
     variations = ProductVariationSerializer(many=True, read_only=True)
-    converted_quantity = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
 
     class Meta:
         model = Product
         fields = [
             'id', 'name', 'image', 'description', 'price', 'categories', 'is_variable',
-            'variations','converted_quantity', 'created_at', 'updated_at'
+            'variations', 'created_at', 'updated_at', 'unit_type', 'unit_quantity', 'converted_quantity'
         ]
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
 
-        # Calcular la cantidad convertida, si la unidad se especifica en el contexto
+        # Calcular la cantidad convertida usando el contexto
         requested_unit = self.context.get('requested_unit')
         if requested_unit:
-            representation['converted_quantity'] = instance.get_converted_quantity(to_unit_name=requested_unit)
+            try:
+                representation['converted_quantity'] = instance.get_converted_quantity(to_unit_name=requested_unit)
+            except ValidationError as e:
+                representation['converted_quantity'] = str(e)  # Muestra el error si la unidad no es válida
         else:
-            # Si no hay una unidad solicitada, muestra la cantidad en su unidad base
+            # Si no se solicita una unidad, muestra la cantidad en su unidad base
             representation['converted_quantity'] = instance.unit_quantity
 
-        # Si el producto no es variable, incluir el precio en la representación
+        # Incluir el precio si el producto no es variable
         if not instance.is_variable:
             representation['price'] = instance.price
 

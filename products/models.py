@@ -55,6 +55,22 @@ class Product(models.Model):
             discount = (self.discount_value / 100) * self.price if self.discount_type == 'percentage' else self.discount_value
             return max(self.price - discount, 0)
         return self.price
+    
+    def get_converted_quantity(self, to_unit_name):
+        """
+        Convierte la cantidad del producto a la unidad solicitada utilizando el factor de conversión.
+        :param to_unit_name: Nombre de la unidad de destino (por ejemplo, "kilogramo").
+        :return: Cantidad convertida.
+        """
+        if not self.unit_type or not self.unit_quantity:
+            return None  # Si no hay tipo de unidad o cantidad base, devuelve None
+        
+        try:
+            # Obtiene el factor de conversión para la unidad solicitada
+            aggregation = UnitTypeAggregation.objects.get(unit_type=self.unit_type, name=to_unit_name)
+            return self.unit_quantity / aggregation.conversion_factor
+        except UnitTypeAggregation.DoesNotExist:
+            raise ValidationError("Unidad de destino no válida para este tipo de producto")
 
 
 class Attribute(models.Model):

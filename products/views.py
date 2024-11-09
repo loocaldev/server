@@ -9,6 +9,12 @@ class ProductView(viewsets.ModelViewSet):
     serializer_class = ProductSerializer
     queryset = Product.objects.all()
 
+    def get_serializer_context(self):
+        # Incluye `requested_unit` en el contexto del serializer para manejar conversiones
+        context = super().get_serializer_context()
+        context['requested_unit'] = self.request.query_params.get('requested_unit', None)
+        return context
+    
 class CategoryView(viewsets.ModelViewSet):
     serializer_class = CategorySerializer
     queryset = Category.objects.all()
