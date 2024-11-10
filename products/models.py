@@ -132,7 +132,12 @@ class ProductVariation(models.Model):
             return quantity / aggregation.conversion_factor
         except UnitTypeAggregation.DoesNotExist:
             raise ValueError("La unidad especificada no es válida para este tipo de producto")
-
+        
+    def __getattr__(self, attr):
+        # Heredar unit_type y unit_quantity del producto si no está en la variación
+        if attr in ['unit_type', 'unit_quantity']:
+            return getattr(self, attr, None) or getattr(self.product, attr)
+        return super().__getattr__(attr)
 
     def save(self, *args, **kwargs):
         # Crea o asigna la categoría de promoción si está en promoción

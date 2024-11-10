@@ -25,8 +25,9 @@ class AttributeSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'options']
 
 class ProductVariationSerializer(serializers.ModelSerializer):
-    # Expande cada opción de atributo con su nombre y su nombre de atributo padre
     attribute_data = serializers.SerializerMethodField()
+    unit_type = serializers.SerializerMethodField()
+    unit_quantity = serializers.SerializerMethodField()
 
     class Meta:
         model = ProductVariation
@@ -36,10 +37,16 @@ class ProductVariationSerializer(serializers.ModelSerializer):
             'unit_type', 'unit_quantity'
         ]
 
+    def get_unit_type(self, obj):
+        # Devuelve unit_type de la variación o el del producto si no está en la variación
+        return obj.unit_type.name if obj.unit_type else obj.product.unit_type.name
+
+    def get_unit_quantity(self, obj):
+        # Devuelve unit_quantity de la variación o el del producto si no está en la variación
+        return obj.unit_quantity if obj.unit_quantity else obj.product.unit_quantity
+
     def get_attribute_data(self, obj):
-        """
-        Agrupa las opciones de atributos por cada atributo.
-        """
+        # Agrupa las opciones de atributos por cada atributo.
         attribute_dict = {}
         for option in obj.attribute_options.all():
             attribute_name = option.attribute.name
