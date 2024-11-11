@@ -23,7 +23,7 @@ class OrderSerializer(serializers.ModelSerializer):
 class DiscountSerializer(serializers.ModelSerializer):
     class Meta:
         model = Discount
-        fields = ['code', 'discount_value', 'min_order_value', 'start_date', 'end_date', 'max_uses_per_user', 'max_uses_total', 'times_used', 'status']
+        fields = ['code', 'discount_value', 'discount_type', 'min_order_value', 'start_date', 'end_date', 'max_uses_per_user', 'max_uses_total', 'times_used', 'status']
 
 class OrderSerializer(serializers.ModelSerializer):
     address = AddressSerializer()

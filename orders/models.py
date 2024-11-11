@@ -5,14 +5,20 @@ from loocal.models import Address
 
 
 class Discount(models.Model):
-    code = models.CharField(max_length=20, unique=True)  # Código alfanumérico
+    DISCOUNT_TYPE_CHOICES = [
+        ('absolute', 'Absoluto'),  # Descuento en valor monetario
+        ('percentage', 'Porcentaje'),  # Descuento en porcentaje
+    ]
+
+    code = models.CharField(max_length=20, unique=True)
     discount_value = models.DecimalField(max_digits=6, decimal_places=2)  # Valor del descuento
-    min_order_value = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)  # Valor mínimo de orden
-    start_date = models.DateField()  # Fecha de inicio de validez
-    end_date = models.DateField()  # Fecha de fin de validez
-    max_uses_per_user = models.PositiveIntegerField(null=True, blank=True)  # Límite de usos por usuario
-    max_uses_total = models.PositiveIntegerField(null=True, blank=True)  # Límite total de usos
-    times_used = models.PositiveIntegerField(default=0)  # Veces que se ha usado el descuento
+    discount_type = models.CharField(max_length=10, choices=DISCOUNT_TYPE_CHOICES, default='absolute')  # Tipo de descuento
+    min_order_value = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    start_date = models.DateField()
+    end_date = models.DateField()
+    max_uses_per_user = models.PositiveIntegerField(null=True, blank=True)
+    max_uses_total = models.PositiveIntegerField(null=True, blank=True)
+    times_used = models.PositiveIntegerField(default=0)
     status = models.CharField(
         max_length=10,
         choices=[('active', 'Vigente'), ('expired', 'Expirado'), ('redeemed', 'Redimido'), ('suspended', 'Suspendido')],
@@ -20,7 +26,7 @@ class Discount(models.Model):
     )
 
     def __str__(self):
-        return f"{self.code} - {self.discount_value}"
+        return f"{self.code} - {self.discount_type} - {self.discount_value}"
 
 class Order(models.Model):
     firstname = models.CharField(max_length=50)
@@ -55,10 +61,15 @@ class Order(models.Model):
     
     def calculate_total(self):
         if self.discount:
-            self.total = self.subtotal - self.discount_value
+            if self.discount.discount_type == 'percentage':
+                self.discount_value = (self.subtotal * self.discount.discount_value / 100).quantize(self.subtotal)
+            else:
+                self.discount_value = self.discount.discount_value
+
+            # Asegurarnos de que el total no sea menor a 0
+            self.total = max(self.subtotal - self.discount_value, 0)
         else:
             self.total = self.subtotal
-
 
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, related_name="items", on_delete=models.CASCADE)

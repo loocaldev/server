@@ -39,7 +39,12 @@ class OrderView(viewsets.ModelViewSet):
                     return Response({"error": "Este descuento ha alcanzado su límite de usos."}, status=status.HTTP_400_BAD_REQUEST)
                 if discount.min_order_value and data['subtotal'] < discount.min_order_value:
                     return Response({"error": "La orden no cumple con el valor mínimo para aplicar el descuento."}, status=status.HTTP_400_BAD_REQUEST)
-                discount_value = discount.discount_value
+
+                # Calcular el valor de descuento según el tipo
+                if discount.discount_type == 'percentage':
+                    discount_value = data['subtotal'] * (discount.discount_value / 100)
+                else:
+                    discount_value = discount.discount_value
             except Discount.DoesNotExist:
                 return Response({"error": "Código de descuento no válido o inactivo."}, status=status.HTTP_400_BAD_REQUEST)
 
