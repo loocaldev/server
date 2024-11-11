@@ -34,6 +34,7 @@ class OrderView(viewsets.ModelViewSet):
     @transaction.atomic
     def create(self, request, *args, **kwargs):
         data = request.data
+        customer_data = data.get('customer', {})
         discount_code = data.get('discount_code')
         discount = None
         discount_value = 0
@@ -114,14 +115,22 @@ class OrderView(viewsets.ModelViewSet):
             delivery_time = datetime.strptime(data.get('delivery_time'), "%H:%M").time()
         except (ValueError, TypeError):
             return Response({"error": "Formato de fecha u hora inválido."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        firstname = customer_data.get('firstname')
+        lastname = customer_data.get('lastname')
+        email = customer_data.get('email')
+        phone = customer_data.get('phone')
+
+        if not all([firstname, lastname, email, phone]):
+            return Response({"error": "Faltan datos del cliente."}, status=status.HTTP_400_BAD_REQUEST)
 
         # Crear la orden
         order = Order.objects.create(
             custom_order_id=data.get('custom_order_id', f"ORD{int(timezone.now().timestamp())}"),
-            firstname=data['firstname'],
-            lastname=data['lastname'],
-            email=data['email'],
-            phone=data['phone'],
+            firstname=firstname,
+            lastname=lastname,
+            email=email,
+            phone=phone,
             address=address,
             delivery_date=delivery_date,
             delivery_time=delivery_time,
