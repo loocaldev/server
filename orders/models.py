@@ -1,5 +1,6 @@
 # orders/models.py
 from django.db import models
+from django.conf import settings
 from products.models import Product, ProductVariation
 from loocal.models import Address 
 
@@ -27,6 +28,18 @@ class Discount(models.Model):
 
     def __str__(self):
         return f"{self.code} - {self.discount_type} - {self.discount_value}"
+
+class UserDiscount(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True)  # Relaciona el usuario registrado, si aplica
+    email = models.EmailField()  # Utiliza el email en caso de que el usuario no esté registrado
+    discount = models.ForeignKey(Discount, on_delete=models.CASCADE, related_name="user_discounts")
+    times_used = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        unique_together = ('email', 'discount')  # Evita duplicados de usuario/descuento
+
+    def __str__(self):
+        return f"{self.email} - {self.discount.code} (Used {self.times_used} times)"
 
 class Order(models.Model):
     firstname = models.CharField(max_length=50)

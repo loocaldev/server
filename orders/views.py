@@ -3,11 +3,15 @@ from rest_framework.response import Response
 from rest_framework.exceptions import NotFound
 from django.utils import timezone
 from django.db import transaction
-from .models import Order, OrderItem, Discount
+from django.db.models import F
+from .models import Order, OrderItem, Discount, UserDiscount
 from products.models import Product, ProductVariation
-from loocal.models import Address  # Importamos el modelo Address
+from django.contrib.auth import get_user_model
+from loocal.models import Address 
 from .serializer import OrderSerializer
 from datetime import datetime
+
+User = get_user_model()
 
 class OrderView(viewsets.ModelViewSet):
     serializer_class = OrderSerializer
@@ -31,10 +35,9 @@ class OrderView(viewsets.ModelViewSet):
         discount = None
         discount_value = 0
 
-        # Aplicar y validar descuento si se proporciona el código
+        # Verificar y aplicar descuento si se proporciona el código
         if discount_code:
             try:
-                # Bloqueo de fila para evitar conflictos de concurrencia al actualizar `times_used`
                 discount = Discount.objects.select_for_update().get(code=discount_code, status='active')
 
                 # Validar que el descuento no haya expirado
@@ -45,19 +48,32 @@ class OrderView(viewsets.ModelViewSet):
                 if discount.max_uses_total and discount.times_used >= discount.max_uses_total:
                     return Response({"error": "Este descuento ha alcanzado su límite de usos."}, status=status.HTTP_400_BAD_REQUEST)
 
-                # Validar valor mínimo de la orden
-                if discount.min_order_value and data['subtotal'] < discount.min_order_value:
-                    return Response({"error": "La orden no cumple con el valor mínimo para aplicar el descuento."}, status=status.HTTP_400_BAD_REQUEST)
+                # Identificar el usuario o el email de la orden
+                user = request.user if request.user.is_authenticated else None
+                email = user.email if user else data.get('email')
+
+                # Validar límite de uso por usuario
+                if discount.max_uses_per_user:
+                    user_discount, created = UserDiscount.objects.get_or_create(
+                        discount=discount,
+                        email=email,
+                        defaults={'user': user, 'times_used': 0}
+                    )
+
+                    if user_discount.times_used >= discount.max_uses_per_user:
+                        return Response({"error": "Este descuento ha alcanzado su límite de usos para este usuario."}, status=status.HTTP_400_BAD_REQUEST)
+
+                    # Actualizar `times_used` del usuario y del descuento
+                    user_discount.times_used = F('times_used') + 1
+                    user_discount.save()
+                    discount.times_used = F('times_used') + 1
+                    discount.save()
 
                 # Calcular el valor de descuento según el tipo
                 if discount.discount_type == 'percentage':
                     discount_value = data['subtotal'] * (discount.discount_value / 100)
                 else:
                     discount_value = discount.discount_value
-
-                # Actualizar `times_used` para registrar el uso del descuento
-                discount.times_used += 1
-                discount.save()
 
             except Discount.DoesNotExist:
                 return Response({"error": "Código de descuento no válido o inactivo."}, status=status.HTTP_400_BAD_REQUEST)
@@ -99,7 +115,7 @@ class OrderView(viewsets.ModelViewSet):
             custom_order_id=data.get('custom_order_id', f"ORD{int(timezone.now().timestamp())}"),
             firstname=data['firstname'],
             lastname=data['lastname'],
-            email=data['email'],
+            email=email,
             phone=data['phone'],
             address=address,
             delivery_date=delivery_date,
