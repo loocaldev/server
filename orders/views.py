@@ -1,17 +1,16 @@
 from rest_framework import viewsets, generics, status
 from rest_framework.response import Response
-from .models import Order, OrderItem
 from rest_framework.exceptions import NotFound
+from django.utils import timezone
+from .models import Order, OrderItem, Discount
 from products.models import Product, ProductVariation
-from .serializer import OrderSerializer
 from loocal.models import Address  # Importamos el modelo Address
+from .serializer import OrderSerializer
 from datetime import datetime
-
 
 class OrderView(viewsets.ModelViewSet):
     serializer_class = OrderSerializer
     queryset = Order.objects.all()
-    
     lookup_field = 'custom_order_id'
 
     def get_object(self):
@@ -26,24 +25,36 @@ class OrderView(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         data = request.data
-        product_items_data = data.pop('items', [])
-        address_id = data.get('address_id', None)  # Address puede ser opcional
-        delivery_date = data.get('delivery_date')
-        delivery_time = data.get('delivery_time')
+        discount_code = data.get('discount_code')
+        discount = None
+        discount_value = 0
 
-        # Si no hay `address_id`, obtenemos los datos de la dirección desde el cuerpo de la solicitud
+        # Aplicar y validar descuento si se proporciona el código
+        if discount_code:
+            try:
+                discount = Discount.objects.get(code=discount_code, status='active')
+                if discount.end_date < timezone.now().date():
+                    return Response({"error": "El descuento ha expirado."}, status=status.HTTP_400_BAD_REQUEST)
+                if discount.max_uses_total and discount.times_used >= discount.max_uses_total:
+                    return Response({"error": "Este descuento ha alcanzado su límite de usos."}, status=status.HTTP_400_BAD_REQUEST)
+                if discount.min_order_value and data['subtotal'] < discount.min_order_value:
+                    return Response({"error": "La orden no cumple con el valor mínimo para aplicar el descuento."}, status=status.HTTP_400_BAD_REQUEST)
+                discount_value = discount.discount_value
+            except Discount.DoesNotExist:
+                return Response({"error": "Código de descuento no válido o inactivo."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Procesamiento de dirección
+        address_id = data.get('address_id', None)
         if not address_id:
+            # Validación y creación de dirección temporal si no se da un `address_id`
             street = data.get('street')
             city = data.get('city')
             state = data.get('state')
             postal_code = data.get('postal_code')
             country = data.get('country')
-
-            # Validamos la existencia de los campos requeridos para una dirección completa
             if not (street and city and state and postal_code and country):
                 return Response({"error": "Datos de dirección incompletos."}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Creamos una dirección temporal para el pedido (sin usuario)
             address = Address.objects.create(
                 street=street,
                 city=city,
@@ -52,7 +63,6 @@ class OrderView(viewsets.ModelViewSet):
                 country=country,
             )
         else:
-            # Si se proporciona `address_id`, usamos una dirección existente
             try:
                 address = Address.objects.get(id=address_id)
             except Address.DoesNotExist:
@@ -60,8 +70,8 @@ class OrderView(viewsets.ModelViewSet):
 
         # Validación de fecha y hora de entrega
         try:
-            delivery_date = datetime.strptime(delivery_date, "%Y-%m-%d").date()
-            delivery_time = datetime.strptime(delivery_time, "%H:%M").time()
+            delivery_date = datetime.strptime(data.get('delivery_date'), "%Y-%m-%d").date()
+            delivery_time = datetime.strptime(data.get('delivery_time'), "%H:%M").time()
         except (ValueError, TypeError):
             return Response({"error": "Formato de fecha u hora inválido."}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -77,10 +87,13 @@ class OrderView(viewsets.ModelViewSet):
             delivery_time=delivery_time,
             payment_status=data.get('payment_status', 'pending'),
             shipping_status=data.get('shipping_status', 'pending'),
-            subtotal=0  # Inicializamos con 0, se actualizará después
+            subtotal=0,  # Inicializamos con 0, se actualizará después
+            discount=discount,
+            discount_value=discount_value
         )
 
         # Procesar los artículos de la orden
+        product_items_data = data.pop('items', [])
         order_subtotal = 0
         for item_data in product_items_data:
             product_variation_id = item_data.get('product_variation_id')
@@ -95,17 +108,12 @@ class OrderView(viewsets.ModelViewSet):
                     product_variation = ProductVariation.objects.get(id=product_variation_id)
                     unit_price = product_variation.price
                     product = product_variation.product
-
-                    if unit_price is None:
-                        return Response({"error": "El precio de la variación del producto no está disponible."}, status=status.HTTP_400_BAD_REQUEST)
-
-                # Manejo para productos simples
                 else:
                     product = Product.objects.get(id=product_id)
                     unit_price = product.price
 
-                    if unit_price is None:
-                        return Response({"error": "El precio del producto no está disponible."}, status=status.HTTP_400_BAD_REQUEST)
+                if unit_price is None:
+                    return Response({"error": "El precio del producto o de la variación no está disponible."}, status=status.HTTP_400_BAD_REQUEST)
 
                 # Calcular subtotal de cada item
                 item_subtotal = unit_price * quantity
@@ -120,17 +128,17 @@ class OrderView(viewsets.ModelViewSet):
                     unit_price=unit_price,
                     subtotal=item_subtotal
                 )
-
             except (Product.DoesNotExist, ProductVariation.DoesNotExist):
                 return Response({"error": "Producto o variación no válido."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Actualizar el subtotal de la orden
+        # Actualizar el subtotal de la orden y calcular el total aplicando el descuento
         order.subtotal = order_subtotal
+        order.calculate_total()  # Método que calcula el total con descuento
         order.save()
 
         serializer = self.get_serializer(order)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
-    
+
     def partial_update(self, request, *args, **kwargs):
         order = self.get_object()
         data = request.data
@@ -142,10 +150,6 @@ class OrderView(viewsets.ModelViewSet):
         order.phone = data.get('phone', order.phone)
 
         address_id = data.get('address_id')
-        delivery_date = data.get('delivery_date')
-        delivery_time = data.get('delivery_time')
-
-        # Actualización de la dirección si se proporciona un address_id
         if address_id:
             try:
                 order.address = Address.objects.get(id=address_id)
@@ -153,15 +157,15 @@ class OrderView(viewsets.ModelViewSet):
                 return Response({"error": "La dirección no es válida."}, status=status.HTTP_400_BAD_REQUEST)
 
         # Validación de fecha y hora de entrega
-        if delivery_date:
+        if data.get('delivery_date'):
             try:
-                order.delivery_date = datetime.strptime(delivery_date, "%Y-%m-%d").date()
+                order.delivery_date = datetime.strptime(data['delivery_date'], "%Y-%m-%d").date()
             except ValueError:
                 return Response({"error": "Formato de fecha inválido."}, status=status.HTTP_400_BAD_REQUEST)
 
-        if delivery_time:
+        if data.get('delivery_time'):
             try:
-                order.delivery_time = datetime.strptime(delivery_time, "%H:%M").time()
+                order.delivery_time = datetime.strptime(data['delivery_time'], "%H:%M").time()
             except ValueError:
                 return Response({"error": "Formato de hora inválido."}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -171,7 +175,6 @@ class OrderView(viewsets.ModelViewSet):
 
         serializer = self.get_serializer(order)
         return Response(serializer.data, status=status.HTTP_200_OK)
-
 
 class OrderByCustomOrderIdAPIView(generics.ListAPIView):
     serializer_class = OrderSerializer
