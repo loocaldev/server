@@ -32,11 +32,18 @@ class OrderView(viewsets.ModelViewSet):
         # Aplicar y validar descuento si se proporciona el código
         if discount_code:
             try:
-                discount = Discount.objects.get(code=discount_code, status='active')
+                # Bloqueo de fila para evitar conflictos de concurrencia al actualizar `times_used`
+                discount = Discount.objects.select_for_update().get(code=discount_code, status='active')
+
+                # Validar que el descuento no haya expirado
                 if discount.end_date < timezone.now().date():
                     return Response({"error": "El descuento ha expirado."}, status=status.HTTP_400_BAD_REQUEST)
+
+                # Validar límite de usos total
                 if discount.max_uses_total and discount.times_used >= discount.max_uses_total:
                     return Response({"error": "Este descuento ha alcanzado su límite de usos."}, status=status.HTTP_400_BAD_REQUEST)
+
+                # Validar valor mínimo de la orden
                 if discount.min_order_value and data['subtotal'] < discount.min_order_value:
                     return Response({"error": "La orden no cumple con el valor mínimo para aplicar el descuento."}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -45,6 +52,11 @@ class OrderView(viewsets.ModelViewSet):
                     discount_value = data['subtotal'] * (discount.discount_value / 100)
                 else:
                     discount_value = discount.discount_value
+
+                # Actualizar `times_used` para registrar el uso del descuento
+                discount.times_used += 1
+                discount.save()
+
             except Discount.DoesNotExist:
                 return Response({"error": "Código de descuento no válido o inactivo."}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -82,7 +94,7 @@ class OrderView(viewsets.ModelViewSet):
 
         # Crear la orden
         order = Order.objects.create(
-            custom_order_id=data['custom_order_id'],
+            custom_order_id=data.get('custom_order_id', f"ORD{int(timezone.now().timestamp())}"),
             firstname=data['firstname'],
             lastname=data['lastname'],
             email=data['email'],
