@@ -35,7 +35,7 @@ class OrderView(viewsets.ModelViewSet):
         discount = None
         discount_value = 0
 
-        # Verificar y aplicar descuento si se proporciona el código
+        # Aplicar y validar descuento si se proporciona el código
         if discount_code:
             try:
                 # Bloquear la fila para evitar problemas de concurrencia en `times_used`
@@ -47,7 +47,7 @@ class OrderView(viewsets.ModelViewSet):
 
                 # Validar límite de usos total
                 if discount.max_uses_total and discount.times_used >= discount.max_uses_total:
-                    return Response({"error": "Este descuento ha alcanzado su límite de usos."}, status=status.HTTP_400_BAD_REQUEST)
+                    return Response({"error": "Este descuento ha alcanzado su límite de usos total."}, status=status.HTTP_400_BAD_REQUEST)
 
                 # Identificar el usuario o el email de la orden
                 user = request.user if request.user.is_authenticated else None
@@ -61,14 +61,17 @@ class OrderView(viewsets.ModelViewSet):
                         defaults={'user': user, 'times_used': 0}
                     )
 
+                    # Verificar si el usuario ya ha alcanzado su límite de uso del descuento
                     if user_discount.times_used >= discount.max_uses_per_user:
                         return Response({"error": "Este descuento ha alcanzado su límite de usos para este usuario."}, status=status.HTTP_400_BAD_REQUEST)
 
-                    # Incrementar el contador de usos del usuario y del descuento
+                    # Incrementar el contador de usos específico para el usuario
                     user_discount.times_used += 1
-                    user_discount.save()
-                    discount.times_used += 1
-                    discount.save()
+                    user_discount.save(update_fields=['times_used'])
+
+                # Incrementar el contador global de usos del descuento
+                discount.times_used += 1
+                discount.save(update_fields=['times_used'])
 
                 # Calcular el valor del descuento
                 if discount.discount_type == 'percentage':
