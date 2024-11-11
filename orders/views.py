@@ -219,10 +219,21 @@ class OrderView(viewsets.ModelViewSet):
 @api_view(['POST'])
 def apply_discount(request):
     code = request.data.get("code")
-    subtotal = request.data.get("subtotal", 0)
+    subtotal = request.data.get("subtotal")
 
+    # Verificar que el código de descuento esté presente y no esté vacío
     if not code:
-        return Response({"error": "No se ha proporcionado un código de descuento"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error": "El código de descuento no fue proporcionado o está vacío"}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Verificar que subtotal sea un número
+    try:
+        subtotal = float(subtotal)
+    except (TypeError, ValueError):
+        return Response({"error": "El subtotal no es un número válido"}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Asegurarse de que el subtotal sea mayor a 0
+    if subtotal <= 0:
+        return Response({"error": "El subtotal debe ser mayor que 0"}, status=status.HTTP_400_BAD_REQUEST)
 
     try:
         discount = Discount.objects.get(code=code, status='active')
@@ -245,7 +256,7 @@ def apply_discount(request):
         # Calcular el valor del descuento
         discount_value = discount.discount_value
         if discount.discount_type == 'percentage':
-            discount_value = (subtotal * (discount_value / 100))
+            discount_value = subtotal * (discount_value / 100)
 
         # Retornar información del descuento
         return Response({
