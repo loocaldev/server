@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from rest_framework.exceptions import NotFound
 from django.utils import timezone
 from django.db import transaction
-from django.db.models import F
+from django.db.models import F, Q
 from .models import Order, OrderItem, Discount, UserDiscount
 from products.models import Product, ProductVariation
 from django.contrib.auth import get_user_model
@@ -41,74 +41,72 @@ class OrderView(viewsets.ModelViewSet):
         # Aplicar y validar descuento si se proporciona el código
         if discount_code:
             try:
-                # Bloquear la fila para evitar problemas de concurrencia en `times_used`
                 discount = Discount.objects.select_for_update().get(code=discount_code, status='active')
-
-                # Validar fecha de expiración del descuento
                 if discount.end_date < timezone.now().date():
                     return Response({"error": "El descuento ha expirado."}, status=status.HTTP_400_BAD_REQUEST)
 
-                # Validar límite de usos total
                 if discount.max_uses_total and discount.times_used >= discount.max_uses_total:
                     return Response({"error": "Este descuento ha alcanzado su límite de usos total."}, status=status.HTTP_400_BAD_REQUEST)
 
-                # Identificar el usuario o el email de la orden
                 user = request.user if request.user.is_authenticated else None
                 email = user.email if user else data.get('email')
-
-                # Validar límite de uso por usuario
                 if discount.max_uses_per_user:
                     user_discount, created = UserDiscount.objects.get_or_create(
                         discount=discount,
                         email=email,
                         defaults={'user': user, 'times_used': 0}
                     )
-
-                    # Verificar si el usuario ya ha alcanzado su límite de uso del descuento
                     if user_discount.times_used >= discount.max_uses_per_user:
                         return Response({"error": "Este descuento ha alcanzado su límite de usos para este usuario."}, status=status.HTTP_400_BAD_REQUEST)
-
-                    # Incrementar el contador de usos específico para el usuario
                     user_discount.times_used += 1
                     user_discount.save(update_fields=['times_used'])
 
-                # Incrementar el contador global de usos del descuento
                 discount.times_used += 1
                 discount.save(update_fields=['times_used'])
 
-                # Calcular el valor del descuento
-                if discount.discount_type == 'percentage':
-                    discount_value = data['subtotal'] * (discount.discount_value / 100)
-                else:
-                    discount_value = discount.discount_value
+                discount_value = data['subtotal'] * (discount.discount_value / 100) if discount.discount_type == 'percentage' else discount.discount_value
 
             except Discount.DoesNotExist:
                 return Response({"error": "Código de descuento no válido o inactivo."}, status=status.HTTP_400_BAD_REQUEST)
 
         # Procesamiento de dirección
-        address_id = data.get('address_id', None)
-        if not address_id:
-            # Validación y creación de dirección temporal si no se da un `address_id`
-            street = data.get('street')
-            city = data.get('city')
-            state = data.get('state')
-            postal_code = data.get('postal_code')
-            country = data.get('country')
-            if not (street and city and state and postal_code and country):
+        address_data = data.get('address')
+        address = None
+        if address_data:
+            street = address_data.get('street')
+            city = address_data.get('city')
+            state = address_data.get('state')
+            postal_code = address_data.get('postal_code')
+            country = address_data.get('country')
+
+            if not all([street, city, state, postal_code, country]):
                 return Response({"error": "Datos de dirección incompletos."}, status=status.HTTP_400_BAD_REQUEST)
 
-            address = Address.objects.create(
-                street=street,
-                city=city,
-                state=state,
-                postal_code=postal_code,
-                country=country,
-            )
+            user = request.user if request.user.is_authenticated else None
+
+            # Verificar si la dirección ya existe para el usuario
+            address = Address.objects.filter(
+                Q(user=user) & 
+                Q(street=street) & 
+                Q(city=city) & 
+                Q(state=state) & 
+                Q(postal_code=postal_code) & 
+                Q(country=country)
+            ).first()
+
+            # Si no existe, crearla
+            if not address:
+                address = Address.objects.create(
+                    user=user,
+                    street=street,
+                    city=city,
+                    state=state,
+                    postal_code=postal_code,
+                    country=country
+                )
+
         else:
-            try:
-                address = Address.objects.get(id=address_id)
-            except Address.DoesNotExist:
-                return Response({"error": "La dirección no es válida."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "Falta la información de dirección."}, status=status.HTTP_400_BAD_REQUEST)
 
         # Validación de fecha y hora de entrega
         try:
@@ -122,7 +120,7 @@ class OrderView(viewsets.ModelViewSet):
             custom_order_id=data.get('custom_order_id', f"ORD{int(timezone.now().timestamp())}"),
             firstname=data['firstname'],
             lastname=data['lastname'],
-            email=email,
+            email=data['email'],
             phone=data['phone'],
             address=address,
             delivery_date=delivery_date,
@@ -135,7 +133,7 @@ class OrderView(viewsets.ModelViewSet):
         )
 
         # Procesar los artículos de la orden
-        product_items_data = data.pop('items', [])
+        product_items_data = data.get('items', [])
         order_subtotal = 0
         for item_data in product_items_data:
             product_variation_id = item_data.get('product_variation_id')
@@ -145,7 +143,6 @@ class OrderView(viewsets.ModelViewSet):
             product_variation = None
 
             try:
-                # Manejo para productos con variaciones
                 if product_variation_id:
                     product_variation = ProductVariation.objects.get(id=product_variation_id)
                     unit_price = product_variation.price
@@ -157,11 +154,9 @@ class OrderView(viewsets.ModelViewSet):
                 if unit_price is None:
                     return Response({"error": "El precio del producto o de la variación no está disponible."}, status=status.HTTP_400_BAD_REQUEST)
 
-                # Calcular subtotal de cada item
                 item_subtotal = unit_price * quantity
                 order_subtotal += item_subtotal
 
-                # Crear el OrderItem
                 OrderItem.objects.create(
                     order=order,
                     product=product,
@@ -173,9 +168,8 @@ class OrderView(viewsets.ModelViewSet):
             except (Product.DoesNotExist, ProductVariation.DoesNotExist):
                 return Response({"error": "Producto o variación no válido."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Actualizar el subtotal de la orden y calcular el total aplicando el descuento
         order.subtotal = order_subtotal
-        order.calculate_total()  # Método que calcula el total con descuento
+        order.calculate_total()
         order.save()
 
         serializer = self.get_serializer(order)
