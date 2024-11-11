@@ -11,6 +11,8 @@ from django.contrib.auth import get_user_model
 from loocal.models import Address 
 from .serializer import OrderSerializer
 from datetime import datetime
+from decimal import Decimal
+
 
 User = get_user_model()
 
@@ -221,19 +223,8 @@ def apply_discount(request):
     code = request.data.get("code")
     subtotal = request.data.get("subtotal")
 
-    # Verificar que el código de descuento esté presente y no esté vacío
     if not code:
-        return Response({"error": "El código de descuento no fue proporcionado o está vacío"}, status=status.HTTP_400_BAD_REQUEST)
-
-    # Verificar que subtotal sea un número
-    try:
-        subtotal = float(subtotal)
-    except (TypeError, ValueError):
-        return Response({"error": "El subtotal no es un número válido"}, status=status.HTTP_400_BAD_REQUEST)
-
-    # Asegurarse de que el subtotal sea mayor a 0
-    if subtotal <= 0:
-        return Response({"error": "El subtotal debe ser mayor que 0"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error": "No se ha proporcionado un código de descuento"}, status=status.HTTP_400_BAD_REQUEST)
 
     try:
         discount = Discount.objects.get(code=code, status='active')
@@ -256,13 +247,18 @@ def apply_discount(request):
         # Calcular el valor del descuento
         discount_value = discount.discount_value
         if discount.discount_type == 'percentage':
-            discount_value = subtotal * (discount_value / 100)
+            discount_value = Decimal(subtotal) * (Decimal(discount_value) / Decimal('100'))
+        else:
+            discount_value = Decimal(discount_value)
+
+        # Asegurarse de que ambos valores estén en Decimal
+        final_price = Decimal(subtotal) - discount_value
 
         # Retornar información del descuento
         return Response({
             "valid": True,
-            "discount_value": discount_value,
-            "final_price": max(subtotal - discount_value, 0),
+            "discount_value": float(discount_value),  # Convertimos a float si es necesario para el JSON
+            "final_price": float(final_price),         # Convertimos a float para JSON
             "message": "Código de descuento aplicado correctamente"
         }, status=status.HTTP_200_OK)
 
