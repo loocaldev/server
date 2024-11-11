@@ -1,4 +1,5 @@
 from rest_framework import viewsets, generics, status
+from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.exceptions import NotFound
 from django.utils import timezone
@@ -214,6 +215,48 @@ class OrderView(viewsets.ModelViewSet):
 
         serializer = self.get_serializer(order)
         return Response(serializer.data, status=status.HTTP_200_OK)
+    
+@api_view(['POST'])
+def apply_discount(request):
+    code = request.data.get("code")
+    subtotal = request.data.get("subtotal", 0)
+
+    if not code:
+        return Response({"error": "No se ha proporcionado un código de descuento"}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        discount = Discount.objects.get(code=code, status='active')
+
+        # Verificar vigencia del descuento
+        if discount.end_date < timezone.now().date():
+            return Response({"error": "El descuento ha expirado"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Verificar límite de usos totales
+        if discount.max_uses_total and discount.times_used >= discount.max_uses_total:
+            return Response({"error": "Este descuento ha alcanzado su límite de usos totales"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Validar límite de uso por usuario
+        email = request.user.email if request.user.is_authenticated else request.data.get('email')
+        if discount.max_uses_per_user:
+            user_discount, _ = UserDiscount.objects.get_or_create(discount=discount, email=email)
+            if user_discount.times_used >= discount.max_uses_per_user:
+                return Response({"error": "Este descuento ha alcanzado su límite de usos para este usuario"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Calcular el valor del descuento
+        discount_value = discount.discount_value
+        if discount.discount_type == 'percentage':
+            discount_value = (subtotal * (discount_value / 100))
+
+        # Retornar información del descuento
+        return Response({
+            "valid": True,
+            "discount_value": discount_value,
+            "final_price": max(subtotal - discount_value, 0),
+            "message": "Código de descuento aplicado correctamente"
+        }, status=status.HTTP_200_OK)
+
+    except Discount.DoesNotExist:
+        return Response({"error": "Código de descuento no válido"}, status=status.HTTP_400_BAD_REQUEST)
 
 class OrderByCustomOrderIdAPIView(generics.ListAPIView):
     serializer_class = OrderSerializer

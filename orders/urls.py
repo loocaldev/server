@@ -10,5 +10,6 @@ router.register(r'', views.OrderView, basename='order')
 urlpatterns = [
     path('customid/<str:custom_order_id>/', views.OrderByCustomOrderIdAPIView.as_view(), name='order-by-custom-order-id'),
     path('', include(router.urls)),  # Incluye el router sin prefijo adicional
+    path('apply-discount/', views.apply_discount, name='apply-discount'),
     path("docs/", include_docs_urls(title="Orders API")),
 ]
