@@ -23,6 +23,7 @@ class OrderView(viewsets.ModelViewSet):
         except Order.DoesNotExist:
             raise NotFound(detail="Order not found")
 
+    @transaction.atomic
     def create(self, request, *args, **kwargs):
         data = request.data
         discount_code = data.get('discount_code')
