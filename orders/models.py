@@ -75,11 +75,13 @@ class Order(models.Model):
     def calculate_total(self):
         if self.discount:
             if self.discount.discount_type == 'percentage':
+                # Calcular el descuento en porcentaje
                 self.discount_value = (self.subtotal * self.discount.discount_value / 100).quantize(self.subtotal)
             else:
+                # Calcular el descuento absoluto
                 self.discount_value = self.discount.discount_value
 
-            # Asegurarnos de que el total no sea menor a 0
+            # Ajustar el total para que no sea negativo
             self.total = max(self.subtotal - self.discount_value, 0)
         else:
             self.total = self.subtotal
