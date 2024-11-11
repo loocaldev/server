@@ -38,9 +38,10 @@ class OrderView(viewsets.ModelViewSet):
         # Verificar y aplicar descuento si se proporciona el código
         if discount_code:
             try:
+                # Bloquear la fila para evitar problemas de concurrencia en `times_used`
                 discount = Discount.objects.select_for_update().get(code=discount_code, status='active')
 
-                # Validar que el descuento no haya expirado
+                # Validar fecha de expiración del descuento
                 if discount.end_date < timezone.now().date():
                     return Response({"error": "El descuento ha expirado."}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -63,13 +64,13 @@ class OrderView(viewsets.ModelViewSet):
                     if user_discount.times_used >= discount.max_uses_per_user:
                         return Response({"error": "Este descuento ha alcanzado su límite de usos para este usuario."}, status=status.HTTP_400_BAD_REQUEST)
 
-                    # Actualizar `times_used` del usuario y del descuento
-                    user_discount.times_used = F('times_used') + 1
+                    # Incrementar el contador de usos del usuario y del descuento
+                    user_discount.times_used += 1
                     user_discount.save()
-                    discount.times_used = F('times_used') + 1
+                    discount.times_used += 1
                     discount.save()
 
-                # Calcular el valor de descuento según el tipo
+                # Calcular el valor del descuento
                 if discount.discount_type == 'percentage':
                     discount_value = data['subtotal'] * (discount.discount_value / 100)
                 else:
