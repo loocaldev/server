@@ -4,7 +4,6 @@ from .models import Product, Category, Attribute, AttributeOption, ProductVariat
 from import_export import resources
 from import_export.admin import ImportExportModelAdmin
 
-# Inline para opciones de atributos en el administrador de atributos
 class AttributeOptionInline(admin.TabularInline):
     model = AttributeOption
     extra = 1
@@ -12,7 +11,6 @@ class AttributeOptionInline(admin.TabularInline):
 class AttributeAdmin(admin.ModelAdmin):
     inlines = [AttributeOptionInline]
 
-# Inline para variaciones de producto en el administrador de productos
 class ProductVariationInline(admin.TabularInline):
     model = ProductVariation
     extra = 1
@@ -22,37 +20,10 @@ class ProductVariationInline(admin.TabularInline):
     ]
     readonly_fields = ['final_price']
 
-# Recursos para importación/exportación de productos
-class ProductResource(resources.ModelResource):
-    class Meta:
-        model = Product
-        fields = (
-            'name', 'description', 'price', 'is_variable', 'unit_type__name', 
-            'unit_quantity', 'categories__name', 'is_on_promotion', 
-            'discount_type', 'discount_value', 'image'
-        )
-
-class ProductVariationResource(resources.ModelResource):
-    product_name = resources.Field(attribute='product__name', column_name='product_name')
-
-    class Meta:
-        model = ProductVariation
-        fields = (
-            'product_name', 'sku', 'price', 'stock', 'unit_type__name', 
-            'unit_quantity', 'is_on_promotion', 'discount_type', 'discount_value', 
-            'image', 'attribute_options__name'
-        )
-
-# Configuración del administrador de productos
-@admin.register(Product)
-class ProductAdmin(ImportExportModelAdmin):
-    resource_class = ProductResource
+class ProductAdmin(admin.ModelAdmin):
     inlines = [ProductVariationInline]
 
-# Configuración del administrador de variaciones de productos
-@admin.register(ProductVariation)
-class ProductVariationAdmin(ImportExportModelAdmin):
-    resource_class = ProductVariationResource
+class ProductVariationAdmin(admin.ModelAdmin):
     list_display = ('sku', 'product', 'price', 'final_price', 'is_on_promotion', 'discount_type', 'discount_value', 'stock')
     list_filter = ('is_on_promotion', 'discount_type')
     readonly_fields = ['final_price']
@@ -60,9 +31,14 @@ class ProductVariationAdmin(ImportExportModelAdmin):
         'product', 'sku', 'price', 'stock', 'image', 'attribute_options', 'unit_type', 
         'unit_quantity', 'contenido_peso', 'is_on_promotion', 'discount_type', 'discount_value', 'final_price'
     ]
+    
+class UnitTypeAggregationAdmin(admin.ModelAdmin):
+    list_display = ('unit_type', 'name', 'conversion_factor')
+    list_filter = ('unit_type',)
 
-# Otros registros
+admin.site.register(Product, ProductAdmin)
 admin.site.register(Category)
 admin.site.register(Attribute, AttributeAdmin)
+admin.site.register(ProductVariation, ProductVariationAdmin)
 admin.site.register(UnitType)
-admin.site.register(UnitTypeAggregation)
+admin.site.register(UnitTypeAggregation, UnitTypeAggregationAdmin)
