@@ -8,6 +8,7 @@ class UserProfile(models.Model):
     document_type = models.CharField(max_length=10, blank=True, null=True)  # Asegúrate de que esté aquí
     document_number = models.CharField(max_length=20, blank=True, null=True)  # Asegúrate de que esté aquí
     phone_number = models.CharField(max_length=15, blank=True, null=True)  # Asegúrate de que esté aquí
+    reset_token = models.CharField(max_length=255, blank=True, null=True)
 
     def __str__(self):
         return self.user.username

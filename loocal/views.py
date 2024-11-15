@@ -14,6 +14,9 @@ from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.authentication import TokenAuthentication
 from django.contrib.auth.hashers import check_password
+from django.utils.crypto import get_random_string
+from django.core.mail import send_mail
+from django.urls import reverse
 
 @api_view(['POST'])
 def login(request):
@@ -178,3 +181,49 @@ def change_password(request):
     user.set_password(new_password)
     user.save()
     return Response({"message": "Contraseña actualizada exitosamente"}, status=status.HTTP_200_OK)
+
+@api_view(['POST'])
+def forgot_password(request):
+    email = request.data.get('email')
+    user = User.objects.filter(email=email).first()
+
+    if not user:
+        return Response({"error": "Correo electrónico no registrado."}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Generar token único
+    token = get_random_string(32)
+    user.userprofile.reset_token = token
+    user.userprofile.save()
+
+    # Crear URL para restablecer contraseña
+    reset_url = f"{request.build_absolute_uri(reverse('reset_password'))}?token={token}"
+
+    # Enviar correo
+    send_mail(
+        'Recuperación de contraseña',
+        f'Usa el siguiente enlace para restablecer tu contraseña: {reset_url}',
+        'noreply@loocal.co',
+        [email],
+        fail_silently=False,
+    )
+    return Response({"message": "Se ha enviado un correo con las instrucciones para restablecer tu contraseña."})
+
+@api_view(['POST'])
+def reset_password(request):
+    token = request.data.get('token')
+    new_password = request.data.get('new_password')
+
+    user_profile = UserProfile.objects.filter(reset_token=token).first()
+
+    if not user_profile:
+        return Response({"error": "Token inválido o expirado."}, status=status.HTTP_400_BAD_REQUEST)
+
+    user = user_profile.user
+    user.set_password(new_password)
+    user.save()
+
+    # Limpiar el token
+    user_profile.reset_token = None
+    user_profile.save()
+
+    return Response({"message": "Contraseña restablecida exitosamente."})
