@@ -38,6 +38,8 @@ urlpatterns = [
     path('api/delete_address/<int:pk>/', views.delete_address, name='delete_address'),
     path('api/update_address/<int:pk>/', views.update_address, name='update_address'),
     path('api/change_password/', views.change_password, name='change_password'),
+    path('api/forgot_password/', views.forgot_password, name='forgot_password'),
+    path('api/reset_password/', views.reset_password, name='reset_password'),
 ]
 
 if settings.DEBUG:
