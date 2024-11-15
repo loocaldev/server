@@ -192,12 +192,17 @@ def forgot_password(request):
     if not user:
         return Response({"error": "Correo electrónico no registrado."}, status=status.HTTP_400_BAD_REQUEST)
 
-    # Generar token único
-    token = get_random_string(32)
     user_profile = user.userprofile
-    user_profile.reset_token = token
-    user_profile.reset_token_created_at = now()  # Actualizar la fecha de creación del token
-    user_profile.save()
+
+    # Verificar si ya existe un token y está dentro del tiempo de validez
+    if user_profile.reset_token and user_profile.reset_token_created_at + timedelta(hours=1) > now():
+        token = user_profile.reset_token  # Reutilizar el token existente
+    else:
+        # Generar un nuevo token
+        token = get_random_string(32)
+        user_profile.reset_token = token
+        user_profile.reset_token_created_at = now()
+        user_profile.save()
 
     # Crear URL para restablecer contraseña en el frontend
     reset_url = f"https://loocal.co/reset-password?token={token}"
@@ -206,11 +211,11 @@ def forgot_password(request):
     send_mail(
         'Recuperación de contraseña',
         f'Usa el siguiente enlace para restablecer tu contraseña: {reset_url}',
-        'camilo@loocal.co',
+        'noreply@loocal.co',
         [email],
         fail_silently=False,
     )
-    return Response({"message": "Se ha enviado un correo con las instrucciones para restablecer tu contraseña."})
+    return Response({"message": "Se ha reenviado el correo con las instrucciones para restablecer tu contraseña."})
 
 @api_view(['POST'])
 def reset_password(request):
