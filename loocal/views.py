@@ -17,6 +17,8 @@ from django.contrib.auth.hashers import check_password
 from django.utils.crypto import get_random_string
 from django.core.mail import send_mail
 from django.urls import reverse
+from datetime import timedelta
+from django.utils.timezone import now
 
 @api_view(['POST'])
 def login(request):
@@ -192,17 +194,19 @@ def forgot_password(request):
 
     # Generar token único
     token = get_random_string(32)
-    user.userprofile.reset_token = token
-    user.userprofile.save()
+    user_profile = user.userprofile
+    user_profile.reset_token = token
+    user_profile.reset_token_created_at = now()  # Actualizar la fecha de creación del token
+    user_profile.save()
 
-    # Crear URL para restablecer contraseña
-    reset_url = f"{request.build_absolute_uri(reverse('reset_password'))}?token={token}"
+    # Crear URL para restablecer contraseña en el frontend
+    reset_url = f"https://loocal.co/reset-password?token={token}"
 
     # Enviar correo
     send_mail(
         'Recuperación de contraseña',
         f'Usa el siguiente enlace para restablecer tu contraseña: {reset_url}',
-        'camilo@loocal.co',
+        'noreply@loocal.co',
         [email],
         fail_silently=False,
     )
@@ -218,11 +222,16 @@ def reset_password(request):
     if not user_profile:
         return Response({"error": "Token inválido o expirado."}, status=status.HTTP_400_BAD_REQUEST)
 
+    # Verificar la expiración del token
+    if user_profile.reset_token_created_at + timedelta(hours=1) < now():
+        return Response({"error": "El token ha expirado."}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Cambiar la contraseña del usuario
     user = user_profile.user
     user.set_password(new_password)
     user.save()
 
-    # Limpiar el token
+    # Limpiar el token después de usarlo
     user_profile.reset_token = None
     user_profile.save()
 
