@@ -14,6 +14,7 @@ from . import signals
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.authentication import TokenAuthentication
+from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.contrib.auth.hashers import check_password
 from django.utils.crypto import get_random_string
 from django.core.mail import send_mail
@@ -24,7 +25,13 @@ from rest_framework_simplejwt.tokens import RefreshToken
 import os
 from twilio.rest import Client
 
-
+# Función para generar tokens
+def get_tokens_for_user(user):
+    refresh = RefreshToken.for_user(user)
+    return {
+        'refresh': str(refresh),
+        'access': str(refresh.access_token),
+    }
 
 @api_view(['POST'])
 def login(request):
@@ -32,7 +39,7 @@ def login(request):
     password = request.data.get('password')
     user = authenticate(username=username, password=password)
 
-    if user is not None:
+    if user:
         tokens = get_tokens_for_user(user)
         serializer = UserSerializer(instance=user)
         return Response({
@@ -41,14 +48,6 @@ def login(request):
         }, status=status.HTTP_200_OK)
     else:
         return Response({"error": "Credenciales inválidas."}, status=status.HTTP_400_BAD_REQUEST)
-
-# Función para generar tokens
-def get_tokens_for_user(user):
-    refresh = RefreshToken.for_user(user)
-    return {
-        'refresh': str(refresh),
-        'access': str(refresh.access_token),
-    }
 
 @api_view(['POST'])
 def register(request):
@@ -100,7 +99,7 @@ def add_address(request):
     return Response(address_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['GET'])
-@authentication_classes([TokenAuthentication])
+@authentication_classes([JWTAuthentication])
 @permission_classes([IsAuthenticated])
 def get_addresses(request):
     user = request.user
@@ -108,16 +107,22 @@ def get_addresses(request):
     serializer = AddressSerializer(instance=addresses, many=True)
     return Response(serializer.data)
 
+
 @api_view(['POST'])
-@authentication_classes([TokenAuthentication])
+@authentication_classes([JWTAuthentication])
 @permission_classes([IsAuthenticated])
 def logout(request):
-    token = Token.objects.get(user=request.user)
-    token.delete()
-    return Response("Logout successful", status=status.HTTP_200_OK)
+    try:
+        refresh_token = request.data.get("refresh")
+        if refresh_token:
+            token = RefreshToken(refresh_token)
+            token.blacklist()  # Agregar token a lista negra si estás usando un sistema de lista negra
+        return Response({"message": "Sesión cerrada con éxito."}, status=status.HTTP_205_RESET_CONTENT)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['PATCH'])
-@authentication_classes([TokenAuthentication])
+@authentication_classes([JWTAuthentication])
 @permission_classes([IsAuthenticated])
 @parser_classes([MultiPartParser, FormParser, JSONParser])
 def update_user(request):
@@ -157,7 +162,7 @@ def update_user(request):
     return Response({"message": "Perfil actualizado exitosamente"}, status=status.HTTP_200_OK)
 
 @api_view(['PATCH'])
-@authentication_classes([TokenAuthentication])
+@authentication_classes([JWTAuthentication])
 @permission_classes([IsAuthenticated])
 def update_address(request, pk):
     user = request.user
@@ -167,7 +172,7 @@ def update_address(request, pk):
     if is_default:
         # Si se marca esta dirección como principal, desmarcar otras del usuario
         Address.objects.filter(user=user, is_default=True).update(is_default=False)
-    
+
     serializer = AddressSerializer(instance=address, data=request.data, partial=True)
     if serializer.is_valid():
         serializer.save()
@@ -175,7 +180,7 @@ def update_address(request, pk):
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['DELETE'])
-@authentication_classes([TokenAuthentication])
+@authentication_classes([JWTAuthentication])
 @permission_classes([IsAuthenticated])
 def delete_address(request, pk):
     address = get_object_or_404(Address, pk=pk, user=request.user)
