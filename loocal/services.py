@@ -25,5 +25,5 @@ def generate_otp():
 def send_email_otp(email, otp_code):
     subject = 'Tu código de verificación'
     message = f'Tu código de verificación es {otp_code}. Este código expirará en 10 minutos.'
-    from_email = 'noreply@loocal.co'
+    from_email = 'no-reply@loocal.co'
     send_mail(subject, message, from_email, [email], fail_silently=False)

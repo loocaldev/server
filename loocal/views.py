@@ -354,3 +354,21 @@ def verify_email_otp(request):
         return Response({"message": "Correo verificado exitosamente."}, status=status.HTTP_200_OK)
 
     return Response({"error": "Código inválido o expirado."}, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['POST'])
+def check_user(request):
+    email = request.data.get('email')
+
+    if not email:
+        return Response({"error": "El correo es obligatorio."}, status=status.HTTP_400_BAD_REQUEST)
+
+    user = User.objects.filter(email=email).first()
+
+    if user:
+        user_profile = user.userprofile
+        return Response({
+            "is_registered": True,
+            "is_temporary": user_profile.is_temporary,  # Asegúrate de tener este campo
+        }, status=status.HTTP_200_OK)
+
+    return Response({"is_registered": False}, status=status.HTTP_200_OK)

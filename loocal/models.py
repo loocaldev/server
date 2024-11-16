@@ -14,6 +14,7 @@ class UserProfile(models.Model):
     reset_token_created_at = models.DateTimeField(blank=True, null=True)
     is_phone_verified = models.BooleanField(default=False)
     is_email_verified = models.BooleanField(default=False)
+    is_temporary = models.BooleanField(default=False)  # Usuario temporal
     otp_code = models.CharField(max_length=6, blank=True, null=True)
     otp_created_at = models.DateTimeField(blank=True, null=True)
 
