@@ -310,12 +310,16 @@ def send_email_verification_code(request):
     if not email:
         return Response({"error": "Correo electrónico requerido."}, status=status.HTTP_400_BAD_REQUEST)
 
+    # Verificar si ya existe un usuario con este correo
     user = User.objects.filter(email=email).first()
+
     if not user:
-        return Response({"error": "Correo electrónico no registrado."}, status=status.HTTP_400_BAD_REQUEST)
+        # Crear un usuario temporal si no existe
+        user = User.objects.create(username=email, email=email, is_active=False)  # is_active=False para que no pueda usar la cuenta
+        UserProfile.objects.create(user=user)
 
     user_profile = user.userprofile
-    otp_code = generate_otp()
+    otp_code = generate_otp()  # Genera el OTP
     user_profile.otp_code = otp_code
     user_profile.otp_created_at = now()
     user_profile.save()
@@ -341,6 +345,12 @@ def verify_email_otp(request):
         user_profile.is_email_verified = True
         user_profile.otp_code = None
         user_profile.save()
+
+        # Activar el usuario si estaba inactivo
+        if not user.is_active:
+            user.is_active = True
+            user.save()
+
         return Response({"message": "Correo verificado exitosamente."}, status=status.HTTP_200_OK)
 
     return Response({"error": "Código inválido o expirado."}, status=status.HTTP_400_BAD_REQUEST)
