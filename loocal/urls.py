@@ -28,10 +28,10 @@ urlpatterns = [
     path('api/products/',include('products.urls')),
     path('api/orders/', include('orders.urls')), 
     path('api/payments/', include('payments.urls')),
-    re_path('api/login', views.login),
-    re_path('api/register', views.register),
-    re_path('api/profile', views.profile),
-    re_path('api/logout', views.logout),
+    path('api/login/', views.login, name='login'),  # Login
+    path('api/register/', views.register, name='register'),  # Registro
+    path('api/profile/', views.profile, name='profile'),  # Perfil
+    path('api/logout/', views.logout, name='logout'),  # Logout
     path('api/update_user/', views.update_user, name='update_user'),
     path('api/add_address/', views.add_address, name='add_address'),
     path('api/get_addresses/', views.get_addresses, name='get_addresses'),
