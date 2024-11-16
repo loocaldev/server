@@ -28,20 +28,25 @@ from django.views.decorators.csrf import csrf_exempt
 
 # Función para generar tokens
 def get_tokens_for_user(user):
+    print("Generating tokens for user:", user)
     refresh = RefreshToken.for_user(user)
     return {
         'refresh': str(refresh),
         'access': str(refresh.access_token),
     }
 
-@csrf_exempt
+@csrf_exempt  # Solo mientras depuras, remueve esto una vez que funcione.
 @api_view(['POST'])
 def login(request):
+    print("Request data received:", request.data)
+
     username = request.data.get('username')
     password = request.data.get('password')
-    user = authenticate(username=username, password=password)
+    print("Username:", username, "Password:", password)
 
+    user = authenticate(username=username, password=password)
     if user:
+        print("User authenticated:", user)
         tokens = get_tokens_for_user(user)
         serializer = UserSerializer(instance=user)
         return Response({
@@ -49,6 +54,7 @@ def login(request):
             "user": serializer.data
         }, status=status.HTTP_200_OK)
     else:
+        print("Authentication failed")
         return Response({"error": "Credenciales inválidas."}, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['POST'])
