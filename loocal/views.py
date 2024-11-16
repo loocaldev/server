@@ -162,7 +162,9 @@ def update_user(request):
         profile, created = UserProfile.objects.get_or_create(user=user)
         profile.document_type = profile_data.get('document_type', profile.document_type)
         profile.document_number = profile_data.get('document_number', profile.document_number)
+        profile.phone_code = profile_data.get('phone_code', profile.phone_code)
         profile.phone_number = profile_data.get('phone_number', profile.phone_number)
+        profile.is_phone_verified = profile_data.get('is_phone_verified', profile.is_phone_verified)
 
         # Si se envía una imagen de perfil
         if 'profile_picture' in request.FILES:
@@ -302,6 +304,10 @@ def verify_code(request):
             .create(to=phone_number, code=code)
 
         if verification_check.status == "approved":
+            user_profile = UserProfile.objects.filter(phone_number=phone_number).first()
+            if user_profile:
+                user_profile.is_phone_verified = True
+                user_profile.save()
             return Response({"message": "Verificación exitosa."})
         else:
             return Response({"error": "Código inválido o expirado."}, status=status.HTTP_400_BAD_REQUEST)
