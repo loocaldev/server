@@ -26,6 +26,10 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = ['id', 'username', 'email', 'first_name', 'last_name', 'userprofile', 'addresses']
         
+    def validate_username(self, value):
+        if User.objects.filter(username=value).exists():
+            raise serializers.ValidationError("Este correo ya está registrado. Inicia sesión.")
+        return value        
 
     def update(self, instance, validated_data):
         profile_data = validated_data.pop('profile', {})
