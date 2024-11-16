@@ -18,7 +18,6 @@ class UserProfile(models.Model):
     otp_created_at = models.DateTimeField(blank=True, null=True)
 
     def is_otp_valid(self):
-        # Validar si el OTP no ha expirado
         if self.otp_created_at:
             return now() < self.otp_created_at + timedelta(minutes=10)
         return False

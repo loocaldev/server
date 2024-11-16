@@ -42,6 +42,8 @@ urlpatterns = [
     path('api/reset_password/', views.reset_password, name='reset_password'),
     path('api/send_verification_code/', views.send_verification_code, name='send_verification_code'),
     path('api/verify_code/', views.verify_code, name='verify_code'),
+    path('api/send_email_verification_code/', views.send_email_verification_code, name='send_email_verification_code'),
+    path('api/verify_email_otp/', views.verify_email_otp, name='verify_email_otp'),
 ]
 
 if settings.DEBUG:

@@ -9,7 +9,7 @@ from rest_framework import status
 from django.shortcuts import get_object_or_404
 from .models import UserProfile, Address
 import datetime
-from .services import send_email_otp, send_sms_otp
+from .services import send_email_otp, send_sms_otp, generate_otp
 from . import signals
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.permissions import IsAuthenticated
@@ -303,3 +303,44 @@ def verify_code(request):
             return Response({"error": "Código inválido o expirado."}, status=status.HTTP_400_BAD_REQUEST)
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['POST'])
+def send_email_verification_code(request):
+    email = request.data.get('email')
+    if not email:
+        return Response({"error": "Correo electrónico requerido."}, status=status.HTTP_400_BAD_REQUEST)
+
+    user = User.objects.filter(email=email).first()
+    if not user:
+        return Response({"error": "Correo electrónico no registrado."}, status=status.HTTP_400_BAD_REQUEST)
+
+    user_profile = user.userprofile
+    otp_code = generate_otp()
+    user_profile.otp_code = otp_code
+    user_profile.otp_created_at = now()
+    user_profile.save()
+
+    send_email_otp(email, otp_code)
+
+    return Response({"message": "Código enviado exitosamente."}, status=status.HTTP_200_OK)
+
+@api_view(['POST'])
+def verify_email_otp(request):
+    email = request.data.get('email')
+    otp_code = request.data.get('otp_code')
+
+    if not email or not otp_code:
+        return Response({"error": "Correo y código son requeridos."}, status=status.HTTP_400_BAD_REQUEST)
+
+    user = User.objects.filter(email=email).first()
+    if not user:
+        return Response({"error": "Correo electrónico no registrado."}, status=status.HTTP_400_BAD_REQUEST)
+
+    user_profile = user.userprofile
+    if user_profile.otp_code == otp_code and user_profile.is_otp_valid():
+        user_profile.is_email_verified = True
+        user_profile.otp_code = None
+        user_profile.save()
+        return Response({"message": "Correo verificado exitosamente."}, status=status.HTTP_200_OK)
+
+    return Response({"error": "Código inválido o expirado."}, status=status.HTTP_400_BAD_REQUEST)
