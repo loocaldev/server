@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'orders',
     'payments',
     'csp',
+    'rest_framework_simplejwt.token_blacklist',
     'loocal'
 ]
 
