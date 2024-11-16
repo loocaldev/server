@@ -237,7 +237,7 @@ def forgot_password(request):
     send_mail(
         'Recuperación de contraseña',
         f'Usa el siguiente enlace para restablecer tu contraseña: {reset_url}',
-        'camilo@loocal.co',
+        'no-reply@loocal.co',
         [email],
         fail_silently=False,
     )
