@@ -73,7 +73,7 @@ def register(request):
     return Response(user_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['GET'])
-@authentication_classes([TokenAuthentication])
+@authentication_classes([JWTAuthentication])
 @permission_classes([IsAuthenticated])
 def profile(request):
     user = request.user
@@ -86,7 +86,7 @@ def profile(request):
     return Response(serializer.data)
 
 @api_view(['POST'])
-@authentication_classes([TokenAuthentication])
+@authentication_classes([JWTAuthentication])
 @permission_classes([IsAuthenticated])
 def add_address(request):
     user = request.user
@@ -116,7 +116,7 @@ def logout(request):
         refresh_token = request.data.get("refresh")
         if refresh_token:
             token = RefreshToken(refresh_token)
-            token.blacklist()  # Agregar token a lista negra si estás usando un sistema de lista negra
+            token.blacklist()
         return Response({"message": "Sesión cerrada con éxito."}, status=status.HTTP_205_RESET_CONTENT)
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
@@ -188,7 +188,7 @@ def delete_address(request, pk):
     return Response(status=status.HTTP_204_NO_CONTENT)
 
 @api_view(['POST'])
-@authentication_classes([TokenAuthentication])
+@authentication_classes([JWTAuthentication])
 @permission_classes([IsAuthenticated])
 def change_password(request):
     user = request.user
