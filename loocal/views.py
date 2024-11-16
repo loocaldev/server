@@ -24,6 +24,7 @@ from django.utils.timezone import now
 from rest_framework_simplejwt.tokens import RefreshToken
 import os
 from twilio.rest import Client
+from django.views.decorators.csrf import csrf_exempt
 
 # Función para generar tokens
 def get_tokens_for_user(user):
@@ -33,6 +34,7 @@ def get_tokens_for_user(user):
         'access': str(refresh.access_token),
     }
 
+@csrf_exempt
 @api_view(['POST'])
 def login(request):
     username = request.data.get('username')
