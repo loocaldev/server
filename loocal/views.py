@@ -59,26 +59,30 @@ def login(request):
 
 @api_view(['POST'])
 def register(request):
-    user_serializer = UserSerializer(data=request.data)
-    if user_serializer.is_valid():
-        user = user_serializer.save()
-        user.email = request.data['username']
-        user.set_password(request.data['password'])
-        user.save()
+    email = request.data.get('username')
+    password = request.data.get('password')
 
-        profile_data = request.data.get('profile', {})
-        UserProfile.objects.create(user=user, **profile_data)
+    user = User.objects.filter(email=email).first()
 
-        addresses_data = request.data.get('addresses', [])
-        for address_data in addresses_data:
-            Address.objects.create(user=user, **address_data)
+    if not user:
+        return Response({"error": "Primero verifica tu correo electrónico."}, status=status.HTTP_400_BAD_REQUEST)
 
-        tokens = get_tokens_for_user(user)
-        return Response({
-            'tokens': tokens,
-            "user": user_serializer.data
-        }, status=status.HTTP_201_CREATED)
-    return Response(user_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    user_profile = user.userprofile
+    if not user_profile.is_email_verified:
+        return Response({"error": "El correo electrónico no ha sido verificado."}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Configurar contraseña y activar usuario
+    user.set_password(password)
+    user.is_active = True
+    user_profile.is_temporary = False  # Ya no es temporal
+    user_profile.save()
+    user.save()
+
+    tokens = get_tokens_for_user(user)
+    return Response({
+        "tokens": tokens,
+        "message": "Registro completado exitosamente."
+    }, status=status.HTTP_201_CREATED)
 
 @api_view(['GET'])
 @authentication_classes([JWTAuthentication])
@@ -310,23 +314,22 @@ def send_email_verification_code(request):
     if not email:
         return Response({"error": "Correo electrónico requerido."}, status=status.HTTP_400_BAD_REQUEST)
 
-    # Verificar si ya existe un usuario con este correo
     user = User.objects.filter(email=email).first()
 
     if not user:
         # Crear un usuario temporal si no existe
-        user = User.objects.create(username=email, email=email, is_active=False)  # is_active=False para que no pueda usar la cuenta
-        UserProfile.objects.create(user=user)
+        user = User.objects.create(username=email, email=email, is_active=False)
+        UserProfile.objects.create(user=user, is_temporary=True)
 
     user_profile = user.userprofile
-    otp_code = generate_otp()  # Genera el OTP
+    otp_code = generate_otp()
     user_profile.otp_code = otp_code
     user_profile.otp_created_at = now()
     user_profile.save()
 
     send_email_otp(email, otp_code)
-
     return Response({"message": "Código enviado exitosamente."}, status=status.HTTP_200_OK)
+
 
 @api_view(['POST'])
 def verify_email_otp(request):
@@ -344,6 +347,7 @@ def verify_email_otp(request):
     if user_profile.otp_code == otp_code and user_profile.is_otp_valid():
         user_profile.is_email_verified = True
         user_profile.otp_code = None
+        user_profile.is_temporary = False  # Convertir en un usuario completo
         user_profile.save()
 
         # Activar el usuario si estaba inactivo
@@ -354,6 +358,7 @@ def verify_email_otp(request):
         return Response({"message": "Correo verificado exitosamente."}, status=status.HTTP_200_OK)
 
     return Response({"error": "Código inválido o expirado."}, status=status.HTTP_400_BAD_REQUEST)
+
 
 @api_view(['POST'])
 def check_user(request):
@@ -368,7 +373,8 @@ def check_user(request):
         user_profile = user.userprofile
         return Response({
             "is_registered": True,
-            "is_temporary": user_profile.is_temporary,  # Asegúrate de tener este campo
+            "is_temporary": user_profile.is_temporary,  # Usuario temporal
         }, status=status.HTTP_200_OK)
 
+    # Usuario no existe
     return Response({"is_registered": False}, status=status.HTTP_200_OK)
