@@ -9,6 +9,7 @@ from rest_framework import status
 from django.shortcuts import get_object_or_404
 from .models import UserProfile, Address
 import datetime
+from .services import send_email_otp, send_sms_otp
 from . import signals
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.permissions import IsAuthenticated
@@ -19,28 +20,39 @@ from django.core.mail import send_mail
 from django.urls import reverse
 from datetime import timedelta
 from django.utils.timezone import now
+from rest_framework_simplejwt.tokens import RefreshToken
+import os
+from twilio.rest import Client
+
+
 
 @api_view(['POST'])
 def login(request):
-    user = authenticate(username=request.data['username'], password=request.data['password'])
-    
-    if not user.check_password(request.data['password']):
-        return Response({"error": "Invalid password"}, status=status.HTTP_400_BAD_REQUEST)
-    
-    django_login(request, user)
-    
-    token, created = Token.objects.get_or_create(user=user)
-    serializer = UserSerializer(instance=user)
-    
-    print("Login: Session cookie age:", request.session.get_expiry_age())
-    print("Login: Token expiration:", token.created + datetime.timedelta(hours=1))
-    
-    return Response({"token": token.key, "user": serializer.data}, status=status.HTTP_200_OK)
+    username = request.data.get('username')
+    password = request.data.get('password')
+    user = authenticate(username=username, password=password)
+
+    if user is not None:
+        tokens = get_tokens_for_user(user)
+        serializer = UserSerializer(instance=user)
+        return Response({
+            "tokens": tokens,
+            "user": serializer.data
+        }, status=status.HTTP_200_OK)
+    else:
+        return Response({"error": "Credenciales inválidas."}, status=status.HTTP_400_BAD_REQUEST)
+
+# Función para generar tokens
+def get_tokens_for_user(user):
+    refresh = RefreshToken.for_user(user)
+    return {
+        'refresh': str(refresh),
+        'access': str(refresh.access_token),
+    }
 
 @api_view(['POST'])
 def register(request):
     user_serializer = UserSerializer(data=request.data)
-    
     if user_serializer.is_valid():
         user = user_serializer.save()
         user.email = request.data['username']
@@ -49,16 +61,17 @@ def register(request):
 
         profile_data = request.data.get('profile', {})
         UserProfile.objects.create(user=user, **profile_data)
-        
+
         addresses_data = request.data.get('addresses', [])
         for address_data in addresses_data:
             Address.objects.create(user=user, **address_data)
-        
-        token = Token.objects.create(user=user)
-        return Response({'token': token.key, "user": user_serializer.data}, status=status.HTTP_201_CREATED)
-    
-    return Response(user_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+        tokens = get_tokens_for_user(user)
+        return Response({
+            'tokens': tokens,
+            "user": user_serializer.data
+        }, status=status.HTTP_201_CREATED)
+    return Response(user_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['GET'])
 @authentication_classes([TokenAuthentication])
@@ -241,3 +254,39 @@ def reset_password(request):
     user_profile.save()
 
     return Response({"message": "Contraseña restablecida exitosamente."})
+
+@api_view(['POST'])
+def send_verification_code(request):
+    phone_number = request.data.get('phone_number')
+    if not phone_number:
+        return Response({"error": "Número de teléfono requerido."}, status=status.HTTP_400_BAD_REQUEST)
+
+    client = Client(os.getenv('TWILIO_ACCOUNT_SID'), os.getenv('TWILIO_AUTH_TOKEN'))
+    try:
+        verification = client.verify.services(os.getenv('TWILIO_VERIFY_SERVICE_SID')) \
+            .verifications \
+            .create(to=phone_number, channel='sms')
+        return Response({"message": "Código enviado exitosamente."})
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+@api_view(['POST'])
+def verify_code(request):
+    phone_number = request.data.get('phone_number')
+    code = request.data.get('code')
+
+    if not phone_number or not code:
+        return Response({"error": "Número de teléfono y código son requeridos."}, status=status.HTTP_400_BAD_REQUEST)
+
+    client = Client(os.getenv('TWILIO_ACCOUNT_SID'), os.getenv('TWILIO_AUTH_TOKEN'))
+    try:
+        verification_check = client.verify.services(os.getenv('TWILIO_VERIFY_SERVICE_SID')) \
+            .verification_checks \
+            .create(to=phone_number, code=code)
+
+        if verification_check.status == "approved":
+            return Response({"message": "Verificación exitosa."})
+        else:
+            return Response({"error": "Código inválido o expirado."}, status=status.HTTP_400_BAD_REQUEST)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

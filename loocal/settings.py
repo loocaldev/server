@@ -3,6 +3,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 import dj_database_url
 import datetime
+from datetime import timedelta
 
 load_dotenv()
 
@@ -15,6 +16,7 @@ TEMPLATE_DIR = os.path.join(BASE_DIR, "webappexample", "templates")
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = ['44.220.218.144', 'loocal.co', 'www.loocal.co']
+SECRET_KEY = os.getenv('SECRET_KEY', 'default_secret_key')
 
 
 # Application definition
@@ -40,6 +42,12 @@ INSTALLED_APPS = [
     'loocal'
 ]
 
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+}
+
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
@@ -51,6 +59,16 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'ROTATE_REFRESH_TOKENS': False,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'ALGORITHM': 'HS256',
+    'SIGNING_KEY': SECRET_KEY,
+    'AUTH_HEADER_TYPES': ('Bearer',),
+}
 
 ROOT_URLCONF = 'loocal.urls'
 
@@ -207,14 +225,26 @@ CSRF_TRUSTED_ORIGINS = [
 
 SECRET_KEY = os.getenv('SECRET_KEY', 'default_secret_key')
 
+# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+# EMAIL_HOST = 'smtp.titan.email'
+# EMAIL_PORT = 587
+# EMAIL_USE_TLS = True
+# EMAIL_HOST_USER = 'camilo@loocal.co'
+# EMAIL_HOST_PASSWORD = 'L00c4l@dev24'
+# EMAIL_USE_TLS = True 
+# DEFAULT_FROM_EMAIL = 'your_email@example.com'
+
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.titan.email'
+EMAIL_HOST = 'smtp.sendgrid.net'
 EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'camilo@loocal.co'
-EMAIL_HOST_PASSWORD = 'L00c4l@dev24'
-EMAIL_USE_TLS = True 
-DEFAULT_FROM_EMAIL = 'your_email@example.com'
+EMAIL_USE_TLS = True  # Asegura la conexión segura
+EMAIL_HOST_USER = 'apikey'  # Este valor debe ser literalmente 'apikey'
+EMAIL_HOST_PASSWORD = os.getenv('SENDGRID_API_KEY')  # Sustituye por la API Key que copiaste
+DEFAULT_FROM_EMAIL = 'no-reply@loocal.co'  # Dirección que usará como remitente
+
+TWILIO_ACCOUNT_SID = os.getenv('TWILIO_ACCOUNT_SID')
+TWILIO_AUTH_TOKEN = os.getenv('TWILIO_AUTH_TOKEN')
+TWILIO_VERIFY_SERVICE_SID = os.getenv('TWILIO_VERIFY_SERVICE_SID')
 
 DEBUG = True
 

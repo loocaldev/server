@@ -1,6 +1,8 @@
 # models.py
 from django.db import models
 from django.contrib.auth.models import User
+from datetime import timedelta
+from django.utils.timezone import now
 
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
@@ -10,6 +12,16 @@ class UserProfile(models.Model):
     phone_number = models.CharField(max_length=15, blank=True, null=True)  # Asegúrate de que esté aquí
     reset_token = models.CharField(max_length=255, blank=True, null=True)
     reset_token_created_at = models.DateTimeField(blank=True, null=True)
+    is_phone_verified = models.BooleanField(default=False)
+    is_email_verified = models.BooleanField(default=False)
+    otp_code = models.CharField(max_length=6, blank=True, null=True)
+    otp_created_at = models.DateTimeField(blank=True, null=True)
+
+    def is_otp_valid(self):
+        # Validar si el OTP no ha expirado
+        if self.otp_created_at:
+            return now() < self.otp_created_at + timedelta(minutes=10)
+        return False
 
     def __str__(self):
         return self.user.username
