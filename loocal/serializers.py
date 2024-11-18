@@ -13,10 +13,11 @@ class UserProfileSerializer(serializers.ModelSerializer):
     document_type = serializers.CharField(required=False)  # Agregar campo
     document_number = serializers.CharField(required=False)  # Agregar campo
     phone_number = serializers.CharField(required=False)  # Agregar campo
+    birthdate = serializers.DateField(required=False)
 
     class Meta:
         model = UserProfile
-        fields = ['profile_picture', 'document_type', 'document_number', 'phone_number']
+        fields = ['profile_picture', 'document_type', 'document_number', 'phone_number', 'birthdate']
 
 class UserSerializer(serializers.ModelSerializer):
     userprofile = UserProfileSerializer(required=False)
