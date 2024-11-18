@@ -306,7 +306,7 @@ def verify_code(request):
         if verification_check.status == "approved":
             user_profile = UserProfile.objects.filter(phone_number=phone_number).first()
             if user_profile:
-                user_profile.is_phone_verified = True
+                user_profile.is_phone_verified = True  # Marcar como verificado
                 user_profile.save()
             return Response({"message": "Verificación exitosa."})
         else:
