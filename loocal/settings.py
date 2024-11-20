@@ -186,7 +186,7 @@ DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
 
 # Opcional: configurar caché para archivos estáticos (mejora el rendimiento)
 AWS_S3_OBJECT_PARAMETERS = {
-    'CacheControl': 'max-age=86400',
+    'CacheControl': 'max-age=0, no-cache, no-store, must-revalidate',
 }
 
 # Media files (uploaded by users)

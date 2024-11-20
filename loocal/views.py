@@ -172,17 +172,16 @@ def update_user(request):
         profile.is_phone_verified = profile_data.get('is_phone_verified', profile.is_phone_verified)
 
         if 'profile_picture' in request.FILES:
-            print(f"Archivo recibido: {request.FILES['profile_picture'].name}")
+            logger.info(f"Archivo recibido: {request.FILES['profile_picture'].name}")
             try:
                 profile.profile_picture = request.FILES['profile_picture']
                 profile.save()
-                print(f"Imagen subida y guardada: {profile.profile_picture.url}")
+                logger.info(f"Imagen subida y guardada correctamente: {profile.profile_picture.url}")
             except Exception as e:
-                print(f"Error al guardar el archivo: {e}")
+                logger.error(f"Error al guardar el archivo: {e}")
 
         # Guardar cambios en UserProfile
         profile.save()
-        print(f"Imagen subida: {profile.profile_picture.url}")
 
     return Response({"message": "Perfil actualizado exitosamente"}, status=status.HTTP_200_OK)
 
