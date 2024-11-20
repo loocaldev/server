@@ -266,26 +266,35 @@ LOGGING = {
             'format': '{levelname} {asctime} {module} {message}',
             'style': '{',
         },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
     },
     'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
         'file': {
             'level': 'DEBUG',
             'class': 'logging.FileHandler',
-            'filename': os.path.join(BASE_DIR, 'debug.log'),
+            'filename': 'debug.log',  # Puedes cambiar la ruta al archivo log
             'formatter': 'verbose',
         },
-        'console': {
-            'class': 'logging.StreamHandler',
-        },
+    },
+    'root': {
+        'handlers': ['console', 'file'],
+        'level': 'DEBUG',
     },
     'loggers': {
         'django': {
-            'handlers': ['file', 'console'],
+            'handlers': ['console', 'file'],
             'level': 'DEBUG',
             'propagate': True,
         },
-        'django.db.backends': {
-            'handlers': ['file', 'console'],
+        'django.request': {
+            'handlers': ['console', 'file'],
             'level': 'DEBUG',
             'propagate': False,
         },
