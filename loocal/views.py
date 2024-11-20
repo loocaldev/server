@@ -25,6 +25,9 @@ from rest_framework_simplejwt.tokens import RefreshToken
 import os
 from twilio.rest import Client
 from django.views.decorators.csrf import csrf_exempt
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Función para generar tokens
 def get_tokens_for_user(user):
@@ -139,8 +142,8 @@ def logout(request):
 @parser_classes([MultiPartParser, FormParser, JSONParser])
 def update_user(request):
     user = request.user
-    print("Entrando a update_user")
-    print("Archivos recibidos:", request.FILES)
+    logger.info("Entrando a update_user")
+    logger.debug(f"Archivos recibidos: {request.FILES}")
 
     # Actualizar campos de User
     user.first_name = request.data.get('first_name', user.first_name)
@@ -169,7 +172,7 @@ def update_user(request):
         profile.is_phone_verified = profile_data.get('is_phone_verified', profile.is_phone_verified)
 
         if 'profile_picture' in request.FILES:
-            print(f"Archivo recibido: {request.FILES['profile_picture'].name}")
+            logger.info(f"Archivo recibido: {request.FILES['profile_picture'].name}")
             profile.profile_picture = request.FILES['profile_picture']    
         else:
             print("No se recibió archivo en 'profile_picture'.")
