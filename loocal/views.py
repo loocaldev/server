@@ -166,12 +166,15 @@ def update_user(request):
         profile.phone_number = profile_data.get('phone_number', profile.phone_number)
         profile.is_phone_verified = profile_data.get('is_phone_verified', profile.is_phone_verified)
 
-        # Si se envía una imagen de perfil
         if 'profile_picture' in request.FILES:
-            profile.profile_picture = request.FILES['profile_picture']
+            print(f"Archivo recibido: {request.FILES['profile_picture'].name}")
+            profile.profile_picture = request.FILES['profile_picture']    
+        else:
+            print("No se recibió archivo en 'profile_picture'.")
 
         # Guardar cambios en UserProfile
         profile.save()
+        print(f"Imagen subida: {profile.profile_picture.url}")
 
     return Response({"message": "Perfil actualizado exitosamente"}, status=status.HTTP_200_OK)
 

@@ -12,6 +12,7 @@ from loocal.models import Address
 from .serializer import OrderSerializer
 from datetime import datetime
 from decimal import Decimal
+from ..loocal.analytics import track_event
 
 
 User = get_user_model()
@@ -180,6 +181,20 @@ class OrderView(viewsets.ModelViewSet):
         order.subtotal = order_subtotal
         order.calculate_total()
         order.save()
+        
+        track_event(
+            user_id=request.user.id if request.user.is_authenticated else None,
+            event_name="Order Created",
+            properties={
+                "order_id": order.custom_order_id,
+                "subtotal": order.subtotal,
+                "total": order.total,
+                "items": [
+                    {"product": item.product.name, "quantity": item.quantity, "price": item.unit_price}
+                    for item in order.items.all()
+                ],
+            },
+        )
 
         serializer = self.get_serializer(order)
         return Response(serializer.data, status=status.HTTP_201_CREATED)

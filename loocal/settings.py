@@ -18,6 +18,11 @@ DEBUG = os.getenv('DEBUG', 'False') == 'True'
 ALLOWED_HOSTS = ['44.220.218.144', 'loocal.co', 'www.loocal.co']
 SECRET_KEY = os.getenv('SECRET_KEY', 'default_secret_key')
 
+import analytics
+
+SEGMENT_WRITE_KEY = "SEBAZoQP8CyZ0k6UJx4lc7T7FBy2AAHg"
+analytics.write_key = SEGMENT_WRITE_KEY
+
 
 # Application definition
 
