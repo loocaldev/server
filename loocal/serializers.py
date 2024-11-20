@@ -6,7 +6,7 @@ from .models import UserProfile, Address
 class AddressSerializer(serializers.ModelSerializer):
     class Meta:
         model = Address
-        fields = ['id', 'street', 'city', 'state', 'postal_code', 'country', 'is_default']
+        fields = ['id', 'street', 'city', 'state', 'postal_code', 'country', 'latitude', 'longitude', 'is_default']
 
 class UserProfileSerializer(serializers.ModelSerializer):
     profile_picture = serializers.ImageField(required=False)  # Asegúrate de que es opcional

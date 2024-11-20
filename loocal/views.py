@@ -26,8 +26,21 @@ import os
 from twilio.rest import Client
 from django.views.decorators.csrf import csrf_exempt
 import logging
+from geopy.geocoders import Nominatim
+from geopy.exc import GeocoderTimedOut
+
+geolocator = Nominatim(user_agent="loocal_geocoder")
 
 logger = logging.getLogger(__name__)
+
+def geocode_address(address):
+    try:
+        location = geolocator.geocode(address)
+        if location:
+            return location.latitude, location.longitude
+    except GeocoderTimedOut:
+        pass
+    return None, None
 
 # Función para generar tokens
 def get_tokens_for_user(user):
@@ -100,18 +113,43 @@ def profile(request):
     serializer = UserSerializer(instance=user)
     return Response(serializer.data)
 
+from geopy.geocoders import Nominatim
+from geopy.exc import GeocoderTimedOut
+
+geolocator = Nominatim(user_agent="loocal_geocoder")
+
+def geocode_address(address):
+    try:
+        location = geolocator.geocode(address)
+        if location:
+            return location.latitude, location.longitude
+    except GeocoderTimedOut:
+        pass
+    return None, None
+
 @api_view(['POST'])
 @authentication_classes([JWTAuthentication])
 @permission_classes([IsAuthenticated])
 def add_address(request):
     user = request.user
     address_serializer = AddressSerializer(data=request.data)
-    
+
     if address_serializer.is_valid():
-        address_serializer.save(user=user)
-        return Response(address_serializer.data, status=status.HTTP_201_CREATED)
+        address_instance = address_serializer.save(user=user)
+        
+        # Geocodificar dirección completa
+        full_address = f"{address_instance.street}, {address_instance.city}, {address_instance.state}, {address_instance.country}"
+        lat, lon = geocode_address(full_address)
+
+        if lat and lon:
+            address_instance.latitude = lat
+            address_instance.longitude = lon
+            address_instance.save()
+
+        return Response(AddressSerializer(address_instance).data, status=status.HTTP_201_CREATED)
     
     return Response(address_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 @api_view(['GET'])
 @authentication_classes([JWTAuthentication])
