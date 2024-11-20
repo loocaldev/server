@@ -13,7 +13,8 @@ from .serializer import OrderSerializer
 from datetime import datetime
 from decimal import Decimal
 from loocal.analytics import track_event
-
+from django.shortcuts import get_object_or_404
+from companies.models import Company
 
 User = get_user_model()
 
@@ -39,6 +40,12 @@ class OrderView(viewsets.ModelViewSet):
         discount_code = data.get('discount_code')
         discount = None
         discount_value = 0
+        
+        # Procesar la empresa (si se proporciona)
+        company_id = data.get('company_id')
+        company = None
+        if company_id:
+            company = get_object_or_404(Company, id=company_id)
 
         # Aplicar y validar descuento si se proporciona el código
         if discount_code:
@@ -132,6 +139,7 @@ class OrderView(viewsets.ModelViewSet):
             lastname=lastname,
             email=email,
             phone=phone,
+            company=company, 
             address=address,
             delivery_date=delivery_date,
             delivery_time=delivery_time,
