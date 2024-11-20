@@ -42,32 +42,38 @@ def invite_member(request, company_id):
     if not email:
         return Response({"error": "El campo 'email' es requerido."}, status=400)
 
-    # Buscar al usuario por correo
-    user = User.objects.filter(email=email).first()
-    if not user:
-        # Crear un usuario temporal si no existe
-        user = User.objects.create(username=email, email=email, is_active=False)
-        user.set_unusable_password()  # Deshabilita el inicio de sesión hasta que complete el registro
+    # Buscar o crear el usuario
+    user, created = User.objects.get_or_create(email=email, defaults={'username': email, 'is_active': False})
+    if created:
+        user.set_unusable_password()  # Usuario no registrado no puede iniciar sesión aún
         user.save()
 
-    # Crear o actualizar la invitación
-    membership, created = CompanyMembership.objects.get_or_create(
-        user=user,
-        company=company,
-        defaults={"invited_by": request.user, "role": "member"}
-    )
-    if not created:
-        return Response({"error": "El usuario ya pertenece a la empresa."}, status=400)
+    # Buscar membresía existente
+    membership = CompanyMembership.objects.filter(user=user, company=company).first()
 
-    # Generar y almacenar el token único
-    membership.invitation_token = get_random_string(32)
-    membership.invitation_created_at = now()
-    membership.save()
+    if membership:
+        if membership.invitation_accepted:
+            return Response({"error": "El usuario ya pertenece a la empresa."}, status=400)
 
-    # Crear URL para aceptar la invitación y completar el registro
+        # Actualizar token de invitación si no ha sido aceptada
+        membership.invitation_token = get_random_string(32)
+        membership.invitation_created_at = now()
+        membership.save()
+    else:
+        # Crear nueva invitación
+        membership = CompanyMembership.objects.create(
+            user=user,
+            company=company,
+            role='member',
+            invited_by=request.user,
+            invitation_token=get_random_string(32),
+            invitation_created_at=now()
+        )
+
+    # Crear URL de aceptación
     accept_url = f"https://loocal.co/accept-invitation/{company.id}/{membership.invitation_token}/"
 
-    # Enviar correo de invitación con SendGrid
+    # Enviar correo de invitación
     try:
         send_mail(
             subject=f"Invitación para unirte a {company.name}",
@@ -86,6 +92,7 @@ def invite_member(request, company_id):
         return Response({"error": f"No se pudo enviar el correo: {str(e)}"}, status=500)
 
     return Response({"message": "Invitación enviada exitosamente."}, status=200)
+
 
 
 @api_view(['POST'])
