@@ -140,11 +140,6 @@ def logout(request):
 def update_user(request):
     user = request.user
     
-     # Log para verificar si la imagen está en los archivos enviados
-    if 'profile_picture' in request.FILES:
-        print("Imagen recibida:", request.FILES['profile_picture'])
-    else:
-        print("No se recibió ninguna imagen en la solicitud.")
 
     # Actualizar campos de User
     user.first_name = request.data.get('first_name', user.first_name)
