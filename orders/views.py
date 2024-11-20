@@ -15,6 +15,8 @@ from decimal import Decimal
 from loocal.analytics import track_event
 from django.shortcuts import get_object_or_404
 from companies.models import Company
+from .utils import calculate_discount
+from .utils import calculate_transport_cost
 
 User = get_user_model()
 
@@ -165,6 +167,7 @@ class OrderView(viewsets.ModelViewSet):
         lastname = customer_data.get("lastname")
         email = customer_data.get("email")
         phone = customer_data.get("phone")
+        transport_cost = calculate_transport_cost(address.city)
 
         if not all([firstname, lastname, email, phone]):
             return Response(
@@ -185,6 +188,7 @@ class OrderView(viewsets.ModelViewSet):
             address=address,
             delivery_date=delivery_date,
             delivery_time=delivery_time,
+            transport_cost=transport_cost,
             payment_status=data.get("payment_status", "pending"),
             shipping_status=data.get("shipping_status", "pending"),
             subtotal=0,  # Inicializamos con 0, se actualizará después
@@ -240,8 +244,16 @@ class OrderView(viewsets.ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
+        if discount and discount.applicable_to_transport:
+            transport_discount = min(transport_cost, discount_value)  # Aplica el descuento máximo permitido
+            order.discount_on_transport = transport_discount
+            discount_value -= transport_discount  # Ajusta el descuento restante
+        else:
+            order.discount_on_transport = 0
+
+        order.discount_value = discount_value  # Asigna el descuento total restante
         order.subtotal = order_subtotal
-        order.calculate_total()
+        order.calculate_total()  # Recalcula el total con el descuento
         order.save()
 
         serializer = self.get_serializer(order)
@@ -315,8 +327,7 @@ def apply_discount(request):
         # Verificar vigencia del descuento
         if discount.end_date < timezone.now().date():
             return Response(
-                {"error": "El descuento ha expirado"},
-                status=status.HTTP_400_BAD_REQUEST,
+                {"error": "El descuento ha expirado"}, status=status.HTTP_400_BAD_REQUEST
             )
 
         # Verificar límite de usos totales
@@ -345,25 +356,14 @@ def apply_discount(request):
                 )
 
         # Calcular el valor del descuento
-        discount_value = discount.discount_value
-        if discount.discount_type == "percentage":
-            discount_value = Decimal(subtotal) * (
-                Decimal(discount_value) / Decimal("100")
-            )
-        else:
-            discount_value = Decimal(discount_value)
+        discount_value = calculate_discount(subtotal, discount)
+        applies_to_transport = discount.applicable_to_transport
 
-        # Asegurarse de que ambos valores estén en Decimal
-        final_price = Decimal(subtotal) - discount_value
-
-        # Retornar información del descuento
         return Response(
             {
                 "valid": True,
-                "discount_value": float(
-                    discount_value
-                ),  # Convertimos a float si es necesario para el JSON
-                "final_price": float(final_price),  # Convertimos a float para JSON
+                "discount_value": float(discount_value),
+                "applies_to_transport": applies_to_transport,
                 "message": "Código de descuento aplicado correctamente",
             },
             status=status.HTTP_200_OK,
@@ -374,6 +374,7 @@ def apply_discount(request):
             {"error": "Código de descuento no válido"},
             status=status.HTTP_400_BAD_REQUEST,
         )
+
 
 
 class OrderByCustomOrderIdAPIView(generics.ListAPIView):
