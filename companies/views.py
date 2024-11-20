@@ -16,8 +16,10 @@ def create_company(request):
     data = request.data
     serializer = CompanySerializer(data=data)
     if serializer.is_valid():
-        company = serializer.save(created_by=request.user)
-        CompanyMembership.objects.create(user=request.user, company=company, role='owner', invitation_accepted=True)
+        # Agrega el usuario autenticado como `created_by`
+        serializer.save(created_by=request.user)
+        # Agrega al creador como miembro con rol "owner"
+        CompanyMembership.objects.create(user=request.user, company=serializer.instance, role='owner', invitation_accepted=True)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
