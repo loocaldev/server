@@ -3,10 +3,18 @@ from django.db import models
 from django.contrib.auth.models import User
 from datetime import timedelta
 from django.utils.timezone import now
+import uuid
+from django.utils.text import slugify
+
+def get_profile_picture_upload_path(instance, filename):
+    unique_id = uuid.uuid4().hex[:8]
+    file_extension = filename.split('.')[-1]
+    filename = f"{slugify(instance.user.username)}-{unique_id}.{file_extension}"
+    return f"profile_pictures/{filename}"
 
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    profile_picture = models.ImageField(upload_to='profile_pictures/', blank=True, null=True)
+    profile_picture = models.ImageField(upload_to=get_profile_picture_upload_path, blank=True, null=True)
     document_type = models.CharField(max_length=10, blank=True, null=True)  # Asegúrate de que esté aquí
     document_number = models.CharField(max_length=20, blank=True, null=True)  # Asegúrate de que esté aquí
     birthdate = models.DateField(blank=True, null=True) 
