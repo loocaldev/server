@@ -43,6 +43,8 @@ class Address(models.Model):
     state = models.CharField(max_length=100)
     postal_code = models.CharField(max_length=20)
     country = models.CharField(max_length=100)
+    latitude = models.FloatField(null=True, blank=True)
+    longitude = models.FloatField(null=True, blank=True)
     is_default = models.BooleanField(default=False)
 
     def __str__(self):
