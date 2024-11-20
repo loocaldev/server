@@ -151,39 +151,47 @@ def update_user(request):
     new_email = request.data.get('email')
     if new_email:
         user.email = new_email
-        user.username = new_email  # Usamos el email como username
+        user.username = new_email
 
     # Actualizar la contraseña si se envía
     new_password = request.data.get('password')
     if new_password:
         user.set_password(new_password)
 
-    # Guardar cambios en el modelo User
     user.save()
 
     # Procesar datos de UserProfile
-    profile_data = request.data.get('profile', {})
-    if profile_data:
-        profile, created = UserProfile.objects.get_or_create(user=user)
-        profile.document_type = profile_data.get('document_type', profile.document_type)
-        profile.document_number = profile_data.get('document_number', profile.document_number)
-        profile.phone_code = profile_data.get('phone_code', profile.phone_code)
-        profile.phone_number = profile_data.get('phone_number', profile.phone_number)
-        profile.is_phone_verified = profile_data.get('is_phone_verified', profile.is_phone_verified)
+    profile, created = UserProfile.objects.get_or_create(user=user)
 
-        if 'profile_picture' in request.FILES:
-            logger.info(f"Archivo recibido: {request.FILES['profile_picture'].name}")
-            try:
-                profile.profile_picture = request.FILES['profile_picture']
-                profile.save()
-                logger.info(f"Imagen subida y guardada correctamente: {profile.profile_picture.url}")
-            except Exception as e:
-                logger.error(f"Error al guardar el archivo: {e}")
+    # Actualizar el perfil
+    profile.document_type = request.data.get('document_type', profile.document_type)
+    profile.document_number = request.data.get('document_number', profile.document_number)
+    profile.phone_code = request.data.get('phone_code', profile.phone_code)
+    profile.phone_number = request.data.get('phone_number', profile.phone_number)
+    profile.is_phone_verified = request.data.get('is_phone_verified', profile.is_phone_verified)
 
-        # Guardar cambios en UserProfile
-        profile.save()
+    # Guardar imagen de perfil
+    if 'profile_picture' in request.FILES:
+        logger.info(f"Archivo recibido para perfil: {request.FILES['profile_picture'].name}")
+        try:
+            profile.profile_picture = request.FILES['profile_picture']
+            profile.save()
+            logger.info(f"Imagen subida correctamente: {profile.profile_picture.url}")
+        except Exception as e:
+            logger.error(f"Error al subir la imagen: {e}")
+            return Response({"error": "Error al subir la imagen"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    return Response({"message": "Perfil actualizado exitosamente"}, status=status.HTTP_200_OK)
+    profile.save()
+
+    # Devuelve los datos actualizados del usuario y perfil
+    user_data = {
+        "first_name": user.first_name,
+        "last_name": user.last_name,
+        "email": user.email,
+        "profile_picture": profile.profile_picture.url if profile.profile_picture else None,
+    }
+
+    return Response({"message": "Perfil actualizado exitosamente", "user": user_data}, status=status.HTTP_200_OK)
 
 @api_view(['PATCH'])
 @authentication_classes([JWTAuthentication])
