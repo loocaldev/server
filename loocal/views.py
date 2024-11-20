@@ -139,7 +139,8 @@ def logout(request):
 @parser_classes([MultiPartParser, FormParser, JSONParser])
 def update_user(request):
     user = request.user
-    
+    print("Entrando a update_user")
+    print("Archivos recibidos:", request.FILES)
 
     # Actualizar campos de User
     user.first_name = request.data.get('first_name', user.first_name)
