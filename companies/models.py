@@ -1,6 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import User
 import uuid
+from django.utils.timezone import now
+
 
 class Company(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -34,6 +36,8 @@ class CompanyMembership(models.Model):
     invited_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="invitations")
     joined_at = models.DateTimeField(auto_now_add=True)
     invitation_accepted = models.BooleanField(default=False)
+    invitation_token = models.CharField(max_length=64, blank=True, null=True)  # Token único para la invitación
+    invitation_created_at = models.DateTimeField(default=now)  # Fecha de creación del token
 
     class Meta:
-        unique_together = ('user', 'company')
+        unique_together = ('user', 'company')   
