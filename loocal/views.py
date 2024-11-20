@@ -26,6 +26,8 @@ import os
 from twilio.rest import Client
 from django.views.decorators.csrf import csrf_exempt
 
+print("La vista update_user ha sido llamada")
+
 # Función para generar tokens
 def get_tokens_for_user(user):
     print("Generating tokens for user:", user)
