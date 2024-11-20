@@ -12,7 +12,7 @@ from loocal.models import Address
 from .serializer import OrderSerializer
 from datetime import datetime
 from decimal import Decimal
-from ..loocal.analytics import track_event
+from loocal.analytics import track_event
 
 
 User = get_user_model()
