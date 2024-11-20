@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
     'rest_framework.authtoken',
+    'rest_framework_simplejwt',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
@@ -43,6 +44,7 @@ INSTALLED_APPS = [
     'products',
     'orders',
     'payments',
+    'companies',
     'csp',
     'rest_framework_simplejwt.token_blacklist',
     'loocal'

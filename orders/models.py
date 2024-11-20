@@ -3,6 +3,7 @@ from django.db import models
 from django.conf import settings
 from products.models import Product, ProductVariation
 from loocal.models import Address 
+from companies.models import Company
 
 
 class Discount(models.Model):
@@ -50,6 +51,7 @@ class Order(models.Model):
     subtotal = models.DecimalField(max_digits=10, decimal_places=2)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    company = models.ForeignKey(Company, on_delete=models.SET_NULL, null=True, blank=True, related_name="orders")
     payment_status = models.CharField(
         max_length=10,
         choices=[('pending', 'Pending'), ('completed', 'Completed'), ('failed', 'Failed')],

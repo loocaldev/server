@@ -45,6 +45,7 @@ urlpatterns = [
     path('api/send_email_verification_code/', views.send_email_verification_code, name='send_email_verification_code'),
     path('api/verify_email_otp/', views.verify_email_otp, name='verify_email_otp'),
     path('api/check_user/', views.check_user, name='check_user'),
+    path('api/companies/', include('companies.urls')),
 ]
 
 if settings.DEBUG:
