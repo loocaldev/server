@@ -5,6 +5,13 @@ from products.models import Product, ProductVariation
 from loocal.models import Address 
 from companies.models import Company
 
+STATUS_CHOICES = [
+    ('pending', 'Pendiente'),
+    ('approved', 'Aprobada'),
+    ('rejected', 'Rechazada'),
+    ('failed', 'Fallida'),
+]
+
 
 class Discount(models.Model):
     DISCOUNT_TYPE_CHOICES = [
@@ -47,7 +54,8 @@ class Order(models.Model):
     lastname = models.CharField(max_length=50)
     email = models.EmailField()
     phone = models.CharField(max_length=20)
-    custom_order_id = models.CharField(max_length=100, unique=True)
+    custom_order_id = models.CharField(max_length=255, unique=True)
+    payment_status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='pending')
     subtotal = models.DecimalField(max_digits=10, decimal_places=2)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -87,6 +95,15 @@ class Order(models.Model):
             self.total = max(self.subtotal - self.discount_value, 0)
         else:
             self.total = self.subtotal
+            
+    def validate_payment_status(self):
+        """
+        Verifica que el estado de pago sea 'approved' antes de procesar la orden.
+        """
+        if self.payment_status != "approved":
+            raise ValueError(
+                f"La orden {self.custom_order_id} no está aprobada para ser procesada. Estado actual: {self.payment_status}"
+            )
 
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, related_name="items", on_delete=models.CASCADE)

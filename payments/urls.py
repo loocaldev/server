@@ -6,4 +6,5 @@ from . import views
 
 urlpatterns = [
     path('generate_integrity_hash/', views.generate_integrity_hash, name='generate_integrity_hash'),
+    path('wompi_webhook/', views.wompi_webhook, name='wompi_webhook'),
 ]
