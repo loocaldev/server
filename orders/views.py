@@ -388,10 +388,10 @@ class OrderByCustomOrderIdAPIView(generics.ListAPIView):
 
 # Simulación de costos de transporte por ciudad
 TRANSPORT_COSTS = {
-    "BOGOTA": 12000,
-    "MEDELLIN": 15000,
-    "CALI": 14000,
-    "BARRANQUILLA": 13000,
+    "BOGOTÁ D.C.": 10000,
+    "CHÍA": 2000,
+    "CAJICÁ": 6000,
+    "SOPÓ": 8000,
 }
 
 DEFAULT_COST = 5000 
