@@ -5,7 +5,7 @@ TRANSPORT_COST_BY_CITY = {
     "CHIA": 5000,
     "CAJICA": 8000,
     "SOPO": 8000,
-    "Ciudad desconocida": 20000,  # Valor predeterminado para casos no mapeados
+    "default": 20000,  # Valor predeterminado para casos no mapeados
 }
 
 def calculate_transport_cost(city):
