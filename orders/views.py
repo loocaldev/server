@@ -17,6 +17,7 @@ from django.shortcuts import get_object_or_404
 from companies.models import Company
 from .utils import calculate_discount
 from .utils import calculate_transport_cost
+from django.http import JsonResponse
 
 User = get_user_model()
 
@@ -383,3 +384,22 @@ class OrderByCustomOrderIdAPIView(generics.ListAPIView):
     def get_queryset(self):
         custom_order_id = self.kwargs["custom_order_id"]
         return Order.objects.filter(custom_order_id=custom_order_id)
+
+
+# Simulación de costos de transporte por ciudad
+TRANSPORT_COSTS = {
+    "Bogotá": 12000,
+    "Medellín": 15000,
+    "Cali": 14000,
+    "Barranquilla": 13000,
+}
+
+DEFAULT_COST = 5000 
+
+def transport_cost_view(request):
+    city = request.GET.get("city")
+    if not city:
+        return JsonResponse({"error": "City parameter is missing."}, status=400)
+    
+    cost = TRANSPORT_COSTS.get(city, DEFAULT_COST)
+    return JsonResponse({"cost": cost})
