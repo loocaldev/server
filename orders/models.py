@@ -74,7 +74,7 @@ class UserDiscount(models.Model):
 
 class Order(models.Model):
     firstname = models.CharField(max_length=50)
-    lastname = models.CharField(max_length=50)
+    lastname = models.CharField(max_length=50, null=True, blank=True)
     email = models.EmailField()
     phone = models.CharField(max_length=20)
     custom_order_id = models.CharField(max_length=255, unique=True)
