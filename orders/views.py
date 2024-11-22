@@ -15,8 +15,7 @@ from decimal import Decimal
 from loocal.analytics import track_event
 from django.shortcuts import get_object_or_404
 from companies.models import Company
-from .utils import calculate_discount
-from .utils import calculate_transport_cost
+from .utils import calculate_discount,calculate_transport_cost,validate_discount_code
 from django.http import JsonResponse
 
 User = get_user_model()
@@ -45,136 +44,91 @@ class OrderView(viewsets.ModelViewSet):
         discount = None
         discount_value = 0
 
-        # Procesar la empresa (si se proporciona)
+        # Procesar empresa si se proporciona
         company_id = data.get("company_id")
         company = None
+        firstname = ""
+        lastname = ""
+        email = ""
+        phone = ""
+
         if company_id:
+            # Pedidos realizados por una empresa
             company = get_object_or_404(Company, id=company_id)
-
-        # Aplicar y validar descuento si se proporciona el código
-        if discount_code:
-            try:
-                discount = Discount.objects.select_for_update().get(
-                    code=discount_code, status="active"
-                )
-                if discount.end_date < timezone.now().date():
-                    return Response(
-                        {"error": "El descuento ha expirado."},
-                        status=status.HTTP_400_BAD_REQUEST,
-                    )
-
-                if (
-                    discount.max_uses_total
-                    and discount.times_used >= discount.max_uses_total
-                ):
-                    return Response(
-                        {
-                            "error": "Este descuento ha alcanzado su límite de usos total."
-                        },
-                        status=status.HTTP_400_BAD_REQUEST,
-                    )
-
-                user = request.user if request.user.is_authenticated else None
-                email = user.email if user else data.get("email")
-                if discount.max_uses_per_user:
-                    user_discount, created = UserDiscount.objects.get_or_create(
-                        discount=discount,
-                        email=email,
-                        defaults={"user": user, "times_used": 0},
-                    )
-                    if user_discount.times_used >= discount.max_uses_per_user:
-                        return Response(
-                            {
-                                "error": "Este descuento ha alcanzado su límite de usos para este usuario."
-                            },
-                            status=status.HTTP_400_BAD_REQUEST,
-                        )
-                    user_discount.times_used += 1
-                    user_discount.save(update_fields=["times_used"])
-
-                discount.times_used += 1
-                discount.save(update_fields=["times_used"])
-
-                discount_value = (
-                    data["subtotal"] * (discount.discount_value / 100)
-                    if discount.discount_type == "percentage"
-                    else discount.discount_value
-                )
-
-            except Discount.DoesNotExist:
-                return Response(
-                    {"error": "Código de descuento no válido o inactivo."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-        # Procesamiento de dirección
-        address_data = data.get("address")
-        address = None
-        if address_data:
-            street = address_data.get("street")
-            city = address_data.get("city")
-            state = address_data.get("state")
-            postal_code = address_data.get("postal_code")
-            country = address_data.get("country")
-
-            if not all([street, city, state, postal_code, country]):
-                return Response(
-                    {"error": "Datos de dirección incompletos."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            user = request.user if request.user.is_authenticated else None
-
-            # Verificar si la dirección ya existe para el usuario
-            address = Address.objects.filter(
-                Q(user=user)
-                & Q(street=street)
-                & Q(city=city)
-                & Q(state=state)
-                & Q(postal_code=postal_code)
-                & Q(country=country)
-            ).first()
-
-            # Si no existe, crearla
-            if not address:
-                address = Address.objects.create(
-                    user=user,
-                    street=street,
-                    city=city,
-                    state=state,
-                    postal_code=postal_code,
-                    country=country,
-                )
-
+            firstname = company.name  # El nombre de la empresa
+            email = company.email
+            phone = company.phone_number
         else:
+            # Pedidos realizados por un cliente
+            firstname = customer_data.get("firstname")
+            lastname = customer_data.get("lastname")
+            email = customer_data.get("email")
+            phone = customer_data.get("phone")
+
+        # Validar que los datos requeridos estén presentes
+        if not firstname or not email or not phone:
             return Response(
-                {"error": "Falta la información de dirección."},
+                {"error": "Faltan datos obligatorios: nombre, email o teléfono."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Validación de fecha y hora de entrega
+        # Validar dirección
+        address_data = data.get("address")
+        if not address_data:
+            return Response(
+                {"error": "La dirección es obligatoria."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        street = address_data.get("street")
+        city = address_data.get("city")
+        state = address_data.get("state")
+        postal_code = address_data.get("postal_code")
+        country = address_data.get("country")
+
+        if not all([street, city, state, postal_code, country]):
+            return Response(
+                {"error": "Faltan datos de la dirección."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Recuperar o crear dirección
+        user = request.user if request.user.is_authenticated else None
+        address = Address.objects.filter(
+            Q(user=user)
+            & Q(street=street)
+            & Q(city=city)
+            & Q(state=state)
+            & Q(postal_code=postal_code)
+            & Q(country=country)
+        ).first()
+
+        if not address:
+            address = Address.objects.create(
+                user=user,
+                street=street,
+                city=city,
+                state=state,
+                postal_code=postal_code,
+                country=country,
+            )
+
+        # Validar fecha y hora de entrega
         try:
-            delivery_date = datetime.strptime(
-                data.get("delivery_date"), "%Y-%m-%d"
-            ).date()
+            delivery_date = datetime.strptime(data.get("delivery_date"), "%Y-%m-%d").date()
             delivery_time = datetime.strptime(data.get("delivery_time"), "%H:%M").time()
         except (ValueError, TypeError):
             return Response(
-                {"error": "Formato de fecha u hora inválido."},
+                {"error": "Formato inválido para fecha u hora de entrega."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        firstname = customer_data.get("firstname")
-        lastname = customer_data.get("lastname")
-        email = customer_data.get("email")
-        phone = customer_data.get("phone")
-        transport_cost = calculate_transport_cost(address.city)
+        # Procesar descuento si se incluye
+        if discount_code:
+            discount = validate_discount_code(discount_code, request, data.get("subtotal"))
 
-        if not all([firstname, lastname, email, phone]):
-            return Response(
-                {"error": "Faltan datos del cliente."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        # Calcular costo de transporte
+        transport_cost = calculate_transport_cost(city)
 
         # Crear la orden
         order = Order.objects.create(
@@ -182,7 +136,7 @@ class OrderView(viewsets.ModelViewSet):
                 "custom_order_id", f"ORD{int(timezone.now().timestamp())}"
             ),
             firstname=firstname,
-            lastname=lastname,
+            lastname=lastname,  # Puede ser vacío para empresas
             email=email,
             phone=phone,
             company=company,
@@ -190,75 +144,44 @@ class OrderView(viewsets.ModelViewSet):
             delivery_date=delivery_date,
             delivery_time=delivery_time,
             transport_cost=transport_cost,
-            payment_status=data.get("payment_status", "pending"),
-            shipping_status=data.get("shipping_status", "pending"),
-            subtotal=0,  # Inicializamos con 0, se actualizará después
+            subtotal=0,  # Se calcula luego
             discount=discount,
             discount_value=discount_value,
+            payment_status=data.get("payment_status", "pending"),
+            shipping_status=data.get("shipping_status", "pending"),
         )
 
-        # Procesar los artículos de la orden
-        product_items_data = data.get("items", [])
-        order_subtotal = 0
-        for item_data in product_items_data:
-            product_variation_id = item_data.get("product_variation_id")
-            product_id = item_data.get("product_id")
-            quantity = item_data["quantity"]
-            unit_price = None
-            product_variation = None
+        # Procesar los productos
+        items_data = data.get("items", [])
+        if not items_data:
+            return Response(
+                {"error": "Debe incluir al menos un producto en la orden."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
-            try:
-                if product_variation_id:
-                    product_variation = ProductVariation.objects.get(
-                        id=product_variation_id
-                    )
-                    unit_price = product_variation.price
-                    product = product_variation.product
-                else:
-                    product = Product.objects.get(id=product_id)
-                    unit_price = product.price
+        subtotal = 0
+        for item in items_data:
+            product = get_object_or_404(Product, id=item["product_id"])
+            quantity = item.get("quantity", 1)
+            unit_price = product.price
+            subtotal += unit_price * quantity
 
-                if unit_price is None:
-                    return Response(
-                        {
-                            "error": "El precio del producto o de la variación no está disponible."
-                        },
-                        status=status.HTTP_400_BAD_REQUEST,
-                    )
+            OrderItem.objects.create(
+                order=order,
+                product=product,
+                quantity=quantity,
+                unit_price=unit_price,
+                subtotal=unit_price * quantity,
+            )
 
-                item_subtotal = unit_price * quantity
-                order_subtotal += item_subtotal
-
-                OrderItem.objects.create(
-                    order=order,
-                    product=product,
-                    product_variation=(
-                        product_variation if product_variation_id else None
-                    ),
-                    quantity=quantity,
-                    unit_price=unit_price,
-                    subtotal=item_subtotal,
-                )
-            except (Product.DoesNotExist, ProductVariation.DoesNotExist):
-                return Response(
-                    {"error": "Producto o variación no válido."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-        if discount and discount.applicable_to_transport:
-            transport_discount = min(transport_cost, discount_value)  # Aplica el descuento máximo permitido
-            order.discount_on_transport = transport_discount
-            discount_value -= transport_discount  # Ajusta el descuento restante
-        else:
-            order.discount_on_transport = 0
-
-        order.discount_value = discount_value  # Asigna el descuento total restante
-        order.subtotal = order_subtotal
-        order.calculate_total()  # Recalcula el total con el descuento
+        # Actualizar subtotal y total
+        order.subtotal = subtotal
+        order.calculate_total()
         order.save()
 
         serializer = self.get_serializer(order)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
 
     def partial_update(self, request, *args, **kwargs):
         order = self.get_object()

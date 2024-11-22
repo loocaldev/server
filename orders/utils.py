@@ -1,4 +1,6 @@
 from decimal import Decimal
+from .models import Discount, UserDiscount
+from django.utils import timezone
 
 TRANSPORT_COST_BY_CITY = {
     "BOGOTA": 8000,
@@ -21,3 +23,22 @@ def calculate_discount(subtotal, discount):
     elif discount.discount_type == 'absolute':
         return min(Decimal(discount.discount_value), Decimal(subtotal))  # Evitar descuento mayor al subtotal
     return Decimal('0.0')
+
+def validate_discount_code(discount_code, request, subtotal):
+        try:
+            discount = Discount.objects.get(code=discount_code, status="active")
+            if discount.end_date < timezone.now().date():
+                raise ValueError("El descuento ha expirado.")
+            if discount.max_uses_total and discount.times_used >= discount.max_uses_total:
+                raise ValueError("El descuento alcanzó su límite de usos.")
+            if discount.max_uses_per_user:
+                user = request.user
+                user_discount, _ = UserDiscount.objects.get_or_create(
+                    discount=discount,
+                    email=user.email if user.is_authenticated else request.data.get("email"),
+                )
+                if user_discount.times_used >= discount.max_uses_per_user:
+                    raise ValueError("El descuento alcanzó su límite de usos para este usuario.")
+            return discount
+        except Discount.DoesNotExist:
+            raise ValueError("El código de descuento no es válido.")
