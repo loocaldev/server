@@ -5,11 +5,12 @@ TRANSPORT_COST_BY_CITY = {
     "CHIA": 5000,
     "CAJICA": 8000,
     "SOPO": 8000,
-    "default": 20000,  # Valor predeterminado para casos no mapeados
 }
 
+DEFAULT_TRANSPORT_COST = 20000
+
 def calculate_transport_cost(city):
-    return TRANSPORT_COST_BY_CITY.get(city, TRANSPORT_COST_BY_CITY["Ciudad desconocida"])
+    return TRANSPORT_COST_BY_CITY.get(city.upper(), DEFAULT_TRANSPORT_COST)
 
 def calculate_discount(subtotal, discount):
     """
