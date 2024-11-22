@@ -128,6 +128,31 @@ class Order(models.Model):
     # Campos para la fecha y hora de entrega
     delivery_date = models.DateField(null=True, blank=True)
     delivery_time = models.TimeField(null=True, blank=True)
+    
+    def calculate_total(self):
+        self.discount_value = self.discount_value or Decimal("0.0")
+        self.transport_cost = self.transport_cost or Decimal("0.0")
+        self.discount_on_transport = self.discount_on_transport or Decimal("0.0")
+
+        if self.discount:
+            if self.discount.discount_type == "percentage":
+                self.discount_value = Decimal(self.subtotal) * (
+                    Decimal(self.discount.discount_value) / Decimal("100")
+                )
+            else:
+                self.discount_value = Decimal(self.discount.discount_value)
+
+            # Total después del descuento
+            self.total = max(
+                Decimal(self.subtotal)
+                + Decimal(self.transport_cost)
+                - Decimal(self.discount_value)
+                - Decimal(self.discount_on_transport),
+                Decimal("0.0"),
+            )
+        else:
+            # Total sin descuento
+            self.total = Decimal(self.subtotal) + Decimal(self.transport_cost)
 
     def __str__(self):
         return f"Order {self.custom_order_id} - {self.firstname or self.company_name} (${self.subtotal})"
