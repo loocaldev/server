@@ -32,7 +32,12 @@ class OrderSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Order
-        fields = ['firstname', 'lastname', 'email', 'phone', 'custom_order_id', 'subtotal', 'discount', 'discount_value', 'total', 'address', 'delivery_date', 'delivery_time', 'payment_status', 'shipping_status', 'items', 'created_at']
+        fields = [
+            'firstname', 'lastname', 'company_name', 'document_type', 'document_number',
+            'email', 'phone', 'custom_order_id', 'subtotal', 'discount', 'discount_value',
+            'total', 'address', 'delivery_date', 'delivery_time', 'payment_status',
+            'shipping_status', 'items', 'created_at'
+        ]
 
     # Validación de código de descuento en la creación o actualización
     def validate_discount(self, discount_code):

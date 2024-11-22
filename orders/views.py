@@ -17,8 +17,54 @@ from django.shortcuts import get_object_or_404
 from companies.models import Company
 from .utils import calculate_discount,calculate_transport_cost,validate_discount_code
 from django.http import JsonResponse
+from loocal.models import Address
 
 User = get_user_model()
+
+def get_or_create_address(user, address_data):
+        """
+        Recupera una dirección existente o la crea si no existe.
+        
+        Args:
+            user (User): El usuario autenticado (o None si no está autenticado).
+            address_data (dict): Los datos de la dirección enviados en el request.
+        
+        Returns:
+            Address: La instancia de dirección.
+        
+        Raises:
+            ValueError: Si faltan datos obligatorios en la dirección.
+        """
+        if not address_data:
+            raise ValueError("La dirección es obligatoria.")
+
+        street = address_data.get("street")
+        city = address_data.get("city")
+        state = address_data.get("state")
+        postal_code = address_data.get("postal_code")
+        country = address_data.get("country")
+
+        if not all([street, city, state, postal_code, country]):
+            raise ValueError("Faltan datos obligatorios en la dirección.")
+
+        # Verificar si la dirección ya existe
+        address = Address.objects.filter(
+            Q(user=user) & Q(street=street) & Q(city=city) &
+            Q(state=state) & Q(postal_code=postal_code) & Q(country=country)
+        ).first()
+
+        # Si no existe, crearla
+        if not address:
+            address = Address.objects.create(
+                user=user,
+                street=street,
+                city=city,
+                state=state,
+                postal_code=postal_code,
+                country=country,
+            )
+
+        return address
 
 
 class OrderView(viewsets.ModelViewSet):
@@ -47,71 +93,47 @@ class OrderView(viewsets.ModelViewSet):
         # Procesar empresa si se proporciona
         company_id = data.get("company_id")
         company = None
-        firstname = ""
-        lastname = ""
+        firstname = None
+        lastname = None
+        company_name = None
         email = ""
         phone = ""
+        document_type = ""
+        document_number = ""
 
         if company_id:
             # Pedidos realizados por una empresa
             company = get_object_or_404(Company, id=company_id)
-            firstname = company.name  # El nombre de la empresa
+            company_name = company.name
             email = company.email
             phone = company.phone_number
         else:
-            # Pedidos realizados por un cliente
+            # Pedidos realizados por una persona
             firstname = customer_data.get("firstname")
             lastname = customer_data.get("lastname")
             email = customer_data.get("email")
             phone = customer_data.get("phone")
+            document_type = customer_data.get("document_type")
+            document_number = customer_data.get("document_number")
 
-        # Validar que los datos requeridos estén presentes
-        if not firstname or not email or not phone:
+        # Validar que los datos obligatorios estén presentes
+        if not (firstname and lastname) and not company_name:
             return Response(
-                {"error": "Faltan datos obligatorios: nombre, email o teléfono."},
+                {"error": "Debe proporcionar el nombre y apellido o el nombre de la empresa."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if not email or not phone or not document_type or not document_number:
+            return Response(
+                {"error": "Faltan datos obligatorios: email, teléfono o documento."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         # Validar dirección
         address_data = data.get("address")
-        if not address_data:
-            return Response(
-                {"error": "La dirección es obligatoria."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        street = address_data.get("street")
-        city = address_data.get("city")
-        state = address_data.get("state")
-        postal_code = address_data.get("postal_code")
-        country = address_data.get("country")
-
-        if not all([street, city, state, postal_code, country]):
-            return Response(
-                {"error": "Faltan datos de la dirección."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # Recuperar o crear dirección
-        user = request.user if request.user.is_authenticated else None
-        address = Address.objects.filter(
-            Q(user=user)
-            & Q(street=street)
-            & Q(city=city)
-            & Q(state=state)
-            & Q(postal_code=postal_code)
-            & Q(country=country)
-        ).first()
-
-        if not address:
-            address = Address.objects.create(
-                user=user,
-                street=street,
-                city=city,
-                state=state,
-                postal_code=postal_code,
-                country=country,
-            )
+        try:
+            address = get_or_create_address(user=request.user if request.user.is_authenticated else None, address_data=address_data)
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         # Validar fecha y hora de entrega
         try:
@@ -125,10 +147,13 @@ class OrderView(viewsets.ModelViewSet):
 
         # Procesar descuento si se incluye
         if discount_code:
-            discount = validate_discount_code(discount_code, request, data.get("subtotal"))
+            try:
+                discount = validate_discount_code(discount_code, request, data.get("subtotal"))
+            except ValueError as e:
+                return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         # Calcular costo de transporte
-        transport_cost = calculate_transport_cost(city)
+        transport_cost = calculate_transport_cost(address.city)
 
         # Crear la orden
         order = Order.objects.create(
@@ -136,9 +161,12 @@ class OrderView(viewsets.ModelViewSet):
                 "custom_order_id", f"ORD{int(timezone.now().timestamp())}"
             ),
             firstname=firstname,
-            lastname=lastname,  # Puede ser vacío para empresas
+            lastname=lastname,
+            company_name=company_name,
             email=email,
             phone=phone,
+            document_type=document_type,
+            document_number=document_number,
             company=company,
             address=address,
             delivery_date=delivery_date,

@@ -73,8 +73,11 @@ class UserDiscount(models.Model):
 
 
 class Order(models.Model):
-    firstname = models.CharField(max_length=50)
+    firstname = models.CharField(max_length=50, null=True, blank=True)
     lastname = models.CharField(max_length=50, null=True, blank=True)
+    company_name = models.CharField(max_length=100, null=True, blank=True)  # Para empresas
+    document_type = models.CharField(max_length=10, null=True, blank=True)  # Tipo de documento
+    document_number = models.CharField(max_length=20, null=True, blank=True)  # Número de documento
     email = models.EmailField()
     phone = models.CharField(max_length=20)
     custom_order_id = models.CharField(max_length=255, unique=True)
@@ -127,34 +130,8 @@ class Order(models.Model):
     delivery_time = models.TimeField(null=True, blank=True)
 
     def __str__(self):
-        return f"Order {self.custom_order_id} - {self.firstname} {self.lastname} (${self.subtotal})"
+        return f"Order {self.custom_order_id} - {self.firstname or self.company_name} (${self.subtotal})"
 
-    def calculate_total(self):
-        self.discount_value = self.discount_value or Decimal("0.0")
-        self.transport_cost = self.transport_cost or Decimal("0.0")
-        self.discount_on_transport = self.discount_on_transport or Decimal("0.0")
-
-        if self.discount:
-            if self.discount.discount_type == "percentage":
-                # Calcular el descuento en porcentaje
-                self.discount_value = Decimal(self.subtotal) * (
-                    Decimal(self.discount.discount_value) / Decimal("100")
-                )
-            else:
-                # Calcular el descuento absoluto
-                self.discount_value = Decimal(self.discount.discount_value)
-
-            # Calcular el total asegurando que no sea negativo
-            self.total = max(
-                Decimal(self.subtotal)
-                + Decimal(self.transport_cost)
-                - Decimal(self.discount_value)
-                - Decimal(self.discount_on_transport),
-                Decimal("0.0"),  # Evitar valores negativos
-            )
-        else:
-            # Si no hay descuento, el total es simplemente el subtotal más el costo de transporte
-            self.total = Decimal(self.subtotal) + Decimal(self.transport_cost)
 
 
 class OrderItem(models.Model):
