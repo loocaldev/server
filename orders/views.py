@@ -17,7 +17,6 @@ from django.shortcuts import get_object_or_404
 from companies.models import Company
 from .utils import calculate_discount,calculate_transport_cost,validate_discount_code
 from django.http import JsonResponse
-from loocal.models import Address
 
 User = get_user_model()
 
@@ -310,12 +309,19 @@ def apply_discount(request):
         # Calcular el valor del descuento
         discount_value = calculate_discount(subtotal, discount)
         applies_to_transport = discount.applicable_to_transport
+        
+        if discount.applicable_to_transport:
+            transport_cost = calculate_transport_cost(Address.city)
+            transport_discount = min(discount_value, transport_cost)
+        else:
+            transport_discount = 0
 
         return Response(
             {
                 "valid": True,
                 "discount_value": float(discount_value),
                 "applies_to_transport": applies_to_transport,
+                "transport_discount": float(transport_discount),
                 "message": "Código de descuento aplicado correctamente",
             },
             status=status.HTTP_200_OK,

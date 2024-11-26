@@ -133,6 +133,10 @@ class Order(models.Model):
         self.discount_value = self.discount_value or Decimal("0.0")
         self.transport_cost = self.transport_cost or Decimal("0.0")
         self.discount_on_transport = self.discount_on_transport or Decimal("0.0")
+        
+        # Validar que los descuentos no superen los valores correspondientes
+        self.discount_on_transport = min(self.discount_on_transport, self.transport_cost)
+        self.discount_value = min(self.discount_value, self.subtotal)
 
         if self.discount:
             if self.discount.discount_type == "percentage":
