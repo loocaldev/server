@@ -677,8 +677,11 @@ def generate_report_endpoint(request):
         # Configurar zona horaria
         timezone = pytz.timezone("America/Bogota")
 
+        # Asegúrate de que now() sea naive antes de asignar una zona horaria
+        naive_now = datetime.now().replace(tzinfo=None)
+
         # Calcular el intervalo de tiempo: desde las 5 pm de ayer hasta las 5 pm de hoy
-        end_time = timezone.localize(now().replace(hour=17, minute=0, second=0, microsecond=0))
+        end_time = timezone.localize(naive_now.replace(hour=17, minute=0, second=0, microsecond=0))
         start_time = end_time - timedelta(days=1)
 
         # Generar contenido del reporte en PDF
