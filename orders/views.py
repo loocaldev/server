@@ -459,7 +459,7 @@ def generate_pdf(order, doc_type="Orden"):
     # Información de entrega
     elements.append(Paragraph("Información de Entrega", styles['Heading2']))
     elements.append(Paragraph(f"Fecha: {order.delivery_date} | Hora: {order.delivery_time}", styles['Normal']))
-    elements.append(Paragraph(f"Dirección: {order.address.street}, {order.address.city}, {order.address.state}, {order.address.postal_code}", styles['Normal']))
+    elements.append(Paragraph(f"Dirección: {order.address.street}, {order.address.city}, {order.address.state}", styles['Normal']))
     elements.append(Spacer(1, 12))
 
     # Tabla de productos
