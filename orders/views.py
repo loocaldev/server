@@ -465,7 +465,7 @@ def upload_to_s3(file_content, bucket_name, file_key):
         aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
         region_name=os.getenv('AWS_S3_REGION_NAME'),
     )
-    s3_client.put_object(Bucket=bucket_name, Key=file_key, Body=file_content, ACL='public-read')
+    s3_client.put_object(Bucket=bucket_name, Key=file_key, Body=file_content)
     return f"https://{bucket_name}.s3.amazonaws.com/{file_key}"
 
 def send_email_with_attachments(order, attachments):
