@@ -23,6 +23,11 @@ import io
 from django.core.mail import EmailMessage
 import boto3
 import os
+from reportlab.lib.pagesizes import letter
+from reportlab.lib import colors
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet
+from io import BytesIO
 from django.conf import settings
 
 
@@ -407,46 +412,80 @@ def transport_cost_view(request):
     cost = calculate_transport_cost(city)  # Calcula el costo usando la lógica centralizada
     return JsonResponse({"cost": cost})
 
-def generate_pdf(order, filename, doc_type="Orden"):
+def generate_order_pdf(order, doc_type="Orden"):
     """
-    Genera un archivo PDF de la orden o factura.
+    Genera un PDF profesional de la orden o factura.
     Args:
         order (Order): Objeto de la orden.
-        filename (str): Nombre del archivo.
-        doc_type (str): Tipo de documento ("Orden" o "Factura").
+        doc_type (str): Tipo de documento (Orden o Factura).
     Returns:
-        bytes: Archivo PDF en memoria.
+        bytes: Contenido del PDF en memoria.
     """
-    buffer = io.BytesIO()
-    c = canvas.Canvas(buffer, pagesize=letter)
-    width, height = letter
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter, topMargin=50, bottomMargin=50)
 
-    # Título
-    c.setFont("Helvetica-Bold", 16)
-    c.drawString(50, height - 50, f"{doc_type} de Pedido - {order.custom_order_id}")
+    styles = getSampleStyleSheet()
+    elements = []
+
+    # Encabezado
+    elements.append(Paragraph(f"<strong>Loocal</strong>", styles['Title']))
+    elements.append(Paragraph(f"<strong>{doc_type} #{order.custom_order_id}</strong>", styles['Heading2']))
+    elements.append(Paragraph(f"<strong>Fecha:</strong> {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", styles['Normal']))
+    elements.append(Paragraph(f"<strong>Estado:</strong> {order.payment_status.capitalize()}", styles['Normal']))
+    elements.append(Spacer(1, 12))
 
     # Información del cliente
-    c.setFont("Helvetica", 12)
-    c.drawString(50, height - 100, f"Cliente: {order.firstname} {order.lastname}")
-    c.drawString(50, height - 120, f"Correo: {order.email}")
-    c.drawString(50, height - 140, f"Teléfono: {order.phone}")
+    elements.append(Paragraph("<strong>Cliente:</strong>", styles['Heading3']))
+    elements.append(Paragraph(f"{order.firstname} {order.lastname}", styles['Normal']))
+    elements.append(Paragraph(f"<strong>Email:</strong> {order.email} | <strong>Tel:</strong> {order.phone}", styles['Normal']))
+    elements.append(Paragraph(f"<strong>Documento:</strong> {order.document_type} {order.document_number}", styles['Normal']))
+    elements.append(Spacer(1, 12))
 
-    # Detalle de productos
-    c.drawString(50, height - 180, "Productos:")
-    y = height - 200
+    # Información de entrega
+    elements.append(Paragraph("<strong>Entrega:</strong>", styles['Heading3']))
+    elements.append(Paragraph(f"<strong>Fecha:</strong> {order.delivery_date} | <strong>Hora:</strong> {order.delivery_time}", styles['Normal']))
+    elements.append(Paragraph(f"<strong>Dirección:</strong> {order.address.street}, {order.address.city}, {order.address.state}, {order.address.postal_code}", styles['Normal']))
+    elements.append(Spacer(1, 12))
+
+    # Tabla de productos
+    elements.append(Paragraph("<strong>Productos:</strong>", styles['Heading3']))
+    data = [["Cant.", "Descripción", "Precio Unitario", "Subtotal"]]
     for item in order.items.all():
-        c.drawString(50, y, f"{item.product.name} - {item.quantity} x ${item.unit_price}")
-        y -= 20
+        data.append([
+            item.quantity,
+            item.product.name,
+            f"${item.unit_price:,.2f}",
+            f"${item.subtotal:,.2f}"
+        ])
+    data.append(["", "", "<strong>Total:</strong>", f"<strong>${order.total:,.2f}</strong>"])
 
-    # Totales
-    c.drawString(50, y - 20, f"Subtotal: ${order.subtotal}")
-    c.drawString(50, y - 40, f"Envío: ${order.transport_cost}")
-    c.drawString(50, y - 60, f"Total: ${order.total}")
+    table = Table(data, colWidths=[50, 200, 100, 100])
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+    ]))
+    elements.append(table)
+    elements.append(Spacer(1, 12))
 
-    # Guardar el PDF
-    c.save()
+    # Resumen de totales
+    elements.append(Paragraph("<strong>Totales:</strong>", styles['Heading3']))
+    elements.append(Paragraph(f"<strong>Subtotal:</strong> ${order.subtotal:,.2f}", styles['Normal']))
+    if order.discount_value > 0:
+        elements.append(Paragraph(f"<strong>Descuento:</strong> -${order.discount_value:,.2f}", styles['Normal']))
+    elements.append(Paragraph(f"<strong>Total Final:</strong> ${order.total:,.2f}", styles['Normal']))
+    elements.append(Spacer(1, 24))
+
+    # Términos y condiciones
+    elements.append(Paragraph("<strong>Términos y Condiciones:</strong>", styles['Heading3']))
+    elements.append(Paragraph("Gracias por su compra. Por favor conserve esta factura como comprobante.", styles['Normal']))
+
+    # Generar el PDF
+    doc.build(elements)
     buffer.seek(0)
-
     return buffer.getvalue()
 
 def upload_to_s3(file_content, bucket_name, file_key):
