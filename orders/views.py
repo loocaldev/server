@@ -234,6 +234,7 @@ class OrderView(viewsets.ModelViewSet):
         order_pdf = generate_pdf(order, doc_type="Orden")
         invoice_pdf = generate_pdf(order, doc_type="Factura")
 
+
         # Subir documentos a S3
         try:
             order_url = upload_to_s3(order_pdf, os.getenv("AWS_STORAGE_BUCKET_NAME"), f"orders/order_{order.custom_order_id}.pdf")
@@ -421,9 +422,6 @@ def generate_pdf(order, doc_type="Orden"):
     Returns:
         bytes: Contenido del PDF en memoria.
     """
-    if filename is None:
-        filename = f"{doc_type.lower()}_{order.custom_order_id}.pdf"
-    ...
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=letter, topMargin=50, bottomMargin=50)
 
@@ -433,7 +431,7 @@ def generate_pdf(order, doc_type="Orden"):
     # Encabezado
     elements.append(Paragraph(f"<strong>Loocal</strong>", styles['Title']))
     elements.append(Paragraph(f"<strong>{doc_type} #{order.custom_order_id}</strong>", styles['Heading2']))
-    elements.append(Paragraph(f"<strong>Fecha:</strong> {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", styles['Normal']))
+    elements.append(Paragraph(f"<strong>Fecha:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", styles['Normal']))
     elements.append(Paragraph(f"<strong>Estado:</strong> {order.payment_status.capitalize()}", styles['Normal']))
     elements.append(Spacer(1, 12))
 
@@ -490,6 +488,7 @@ def generate_pdf(order, doc_type="Orden"):
     doc.build(elements)
     buffer.seek(0)
     return buffer.getvalue()
+
 
 def upload_to_s3(file_content, bucket_name, file_key):
     """
