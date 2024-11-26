@@ -23,6 +23,11 @@ import io
 from django.core.mail import EmailMessage
 import boto3
 import os
+from datetime import timedelta
+from reportlab.platypus import Table
+from django.utils.timezone import now
+import pytz
+from apscheduler.schedulers.background import BackgroundScheduler
 from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
@@ -508,7 +513,9 @@ def generate_pdf(order, doc_type="Orden"):
 
     # Términos y condiciones
     elements.append(Paragraph("Términos y Condiciones", styles['Heading2']))
-    elements.append(Paragraph("Gracias por su compra. Por favor conserve esta factura como comprobante.", styles['Normal']))
+    elements.append(Paragraph("Gracias por su compra. Por favor conserve este recibo como comprobante.", styles['Normal']))
+    elements.append(Paragraph("Si necesita ayuda, comuníquese al WhatsApp +57 3197363596.", styles['Normal']))
+    elements.append(Paragraph("Gracias por comprar en Loocal.co", styles['Normal']))
 
     # Generar el PDF
     doc.build(elements)
@@ -552,3 +559,138 @@ def send_email_with_attachments(order, attachments):
     for filename, content, mime_type in attachments:
         email.attach(filename, content, mime_type)
     email.send()
+    
+def generate_daily_report_pdf(start_time, end_time):
+    """
+    Genera un PDF con el reporte diario de órdenes.
+    Args:
+        start_time (datetime): Inicio del período de reporte.
+        end_time (datetime): Fin del período de reporte.
+    Returns:
+        bytes: Contenido del PDF.
+    """
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter, topMargin=50, bottomMargin=50)
+    styles = getSampleStyleSheet()
+    elements = []
+
+    # Agregar encabezado
+    elements.append(Paragraph("Reporte Diario de Órdenes", styles['Title']))
+    elements.append(Paragraph(f"Período: {start_time.strftime('%Y-%m-%d %H:%M')} - {end_time.strftime('%Y-%m-%d %H:%M')}", styles['Normal']))
+    elements.append(Spacer(1, 20))
+
+    # Consultar órdenes en el período
+    orders = Order.objects.filter(created_at__gte=start_time, created_at__lt=end_time)
+    if not orders.exists():
+        elements.append(Paragraph("No se encontraron órdenes en el período.", styles['Normal']))
+    else:
+        # Crear tabla de datos
+        data = [["ID Orden", "Fecha/Hora Entrega", "Ciudad", "Estado", "Total"]]
+        for order in orders:
+            data.append([
+                order.custom_order_id,
+                f"{order.delivery_date} {order.delivery_time}",
+                order.address.city,
+                order.payment_status.capitalize(),
+                f"${round(order.total):,.0f}"
+            ])
+
+        table = Table(data, colWidths=[100, 150, 100, 100, 100])
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ]))
+        elements.append(table)
+
+    # Términos
+    elements.append(Spacer(1, 20))
+    elements.append(Paragraph("Reporte generado automáticamente por Loocal.co", styles['Normal']))
+
+    # Generar el PDF
+    doc.build(elements)
+    buffer.seek(0)
+    return buffer.getvalue()
+def send_daily_report_email(report_content, start_time, end_time):
+    """
+    Envía el reporte diario por correo.
+    Args:
+        report_content (bytes): Contenido del PDF del reporte.
+        start_time (datetime): Inicio del período.
+        end_time (datetime): Fin del período.
+    """
+    email = EmailMessage(
+        subject="Reporte Diario de Órdenes",
+        body=f"Adjunto encontrarás el reporte diario de órdenes del período {start_time.strftime('%Y-%m-%d %H:%M')} a {end_time.strftime('%Y-%m-%d %H:%M')}.",
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        to=["camilo@loocal.co"],
+    )
+    filename = f"reporte_diario_{start_time.strftime('%Y%m%d%H%M')}_a_{end_time.strftime('%Y%m%d%H%M')}.pdf"
+    email.attach(filename, report_content, "application/pdf")
+    email.send()
+def save_report_to_s3(report_content, start_time, end_time):
+    """
+    Guarda el reporte diario en la carpeta reportes de S3.
+    Args:
+        report_content (bytes): Contenido del PDF.
+        start_time (datetime): Inicio del período.
+        end_time (datetime): Fin del período.
+    Returns:
+        str: URL del archivo guardado.
+    """
+    bucket_name = os.getenv("AWS_STORAGE_BUCKET_NAME")
+    filename = f"reportes/reporte_diario_{start_time.strftime('%Y%m%d%H%M')}_a_{end_time.strftime('%Y%m%d%H%M')}.pdf"
+    return upload_to_s3(report_content, bucket_name, filename)
+
+def generate_and_send_daily_report():
+    """
+    Genera y envía el reporte diario de órdenes.
+    """
+    # Definir el intervalo de tiempo (últimas 24 horas hasta las 5:00 pm del día actual)
+    timezone = pytz.timezone("America/Bogota")
+    end_time = timezone.localize(now().replace(hour=17, minute=0, second=0, microsecond=0))
+    start_time = end_time - timedelta(days=1)
+
+    # Generar reporte en PDF
+    report_content = generate_daily_report_pdf(start_time, end_time)
+
+    # Guardar en S3
+    save_report_to_s3(report_content, start_time, end_time)
+
+    # Enviar por correo
+    send_daily_report_email(report_content, start_time, end_time)
+
+# Programar la ejecución diaria
+scheduler = BackgroundScheduler()
+scheduler.add_job(generate_and_send_daily_report, 'cron', hour=17, minute=0, timezone="America/Bogota")
+scheduler.start()
+
+@api_view(['POST'])
+def generate_report_endpoint(request):
+    """
+    Endpoint para generar y enviar el reporte diario de órdenes.
+    """
+    try:
+        # Configurar zona horaria
+        timezone = pytz.timezone("America/Bogota")
+
+        # Calcular el intervalo de tiempo: desde las 5 pm de ayer hasta las 5 pm de hoy
+        end_time = timezone.localize(now().replace(hour=17, minute=0, second=0, microsecond=0))
+        start_time = end_time - timedelta(days=1)
+
+        # Generar contenido del reporte en PDF
+        report_content = generate_daily_report_pdf(start_time, end_time)
+
+        # Guardar el reporte en S3
+        save_report_to_s3(report_content, start_time, end_time)
+
+        # Enviar el reporte por correo
+        send_daily_report_email(report_content, start_time, end_time)
+
+        return Response({"message": "Reporte generado, guardado y enviado con éxito."}, status=200)
+
+    except Exception as e:
+        return Response({"error": f"Error al generar el reporte: {str(e)}"}, status=500)
