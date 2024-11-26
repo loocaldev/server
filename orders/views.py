@@ -430,12 +430,12 @@ def generate_pdf(order, doc_type="Orden"):
     elements = []
 
     # Agregar logo
-    logo_path = "https://loocalapp.s3.us-east-1.amazonaws.com/logoloocal.png"  # Cambia esto a la ubicación real del logo
+    logo_path = "https://loocalapp.s3.us-east-1.amazonaws.com/logoloocal.png"
     try:
-        logo = Image(logo_path, width=100, height=50)  # Ajusta el tamaño del logo
+        logo = Image(logo_path, width=100, height=50)
         elements.append(logo)
     except Exception:
-        elements.append(Paragraph("Loocal", styles['Title']))  # Fallback si el logo no está disponible
+        elements.append(Paragraph("Loocal", styles['Title']))  # Fallback si el logo falla
 
     # Encabezado
     elements.append(Spacer(1, 20))
@@ -464,8 +464,8 @@ def generate_pdf(order, doc_type="Orden"):
         data.append([
             item.quantity,
             item.product.name,
-            f"${item.unit_price:,.2f}",
-            f"${item.subtotal:,.2f}"
+            f"${round(item.unit_price):,.0f}",  # Redondear precio unitario
+            f"${round(item.subtotal):,.0f}"    # Redondear subtotal
         ])
     table = Table(data, colWidths=[50, 200, 100, 100])
     table.setStyle(TableStyle([
@@ -479,14 +479,20 @@ def generate_pdf(order, doc_type="Orden"):
     elements.append(table)
     elements.append(Spacer(1, 20))
 
+    # Calcular valores redondeados para totales
+    subtotal = round(order.subtotal)  # Redondear subtotal
+    transport_cost = round(order.transport_cost)  # Redondear transporte
+    discount_value = round(order.discount_value)  # Redondear descuento
+    total = round(order.total)  # Redondear total
+
     # Tabla de totales
     totals_data = [
-        ["Subtotal de productos", f"${order.subtotal:,.2f}"],
-        ["Costo de transporte", f"${order.transport_cost:,.2f}"],
+        ["Subtotal de productos", f"${subtotal:,.0f}"],
+        ["Costo de transporte", f"${transport_cost:,.0f}"],
     ]
     if order.discount_value > 0:
-        totals_data.append(["Descuento aplicado", f"-${order.discount_value:,.2f}"])
-    totals_data.append(["Total final", f"${order.total:,.2f}"])
+        totals_data.append(["Descuento aplicado", f"-${discount_value:,.0f}"])
+    totals_data.append(["Total final", f"${total:,.0f}"])
     totals_table = Table(totals_data, colWidths=[250, 100])
     totals_table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (1, 0), colors.lightgrey),
