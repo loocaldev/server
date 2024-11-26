@@ -5,7 +5,7 @@ from django.utils import timezone
 AVAILABLE_CITIES = ["ZONA NORTE", "CHÍA", "CAJICÁ", "SOPÓ"]
 
 TRANSPORT_COST_BY_CITY = {
-    "BOGOTÁ NORTE": 10000,
+    "ZONA NORTE": 10000,
     "CHÍA": 2000,
     "CAJICÁ": 6000,
     "SOPÓ": 8000,
@@ -17,7 +17,8 @@ def calculate_transport_cost(city):
     if not isinstance(city, str):
         # Si city no es una cadena, devuelve el costo de transporte por defecto
         return DEFAULT_TRANSPORT_COST
-    return TRANSPORT_COST_BY_CITY.get(city.upper(), DEFAULT_TRANSPORT_COST)
+    normalized_city = city.strip().upper()
+    return TRANSPORT_COST_BY_CITY.get(normalized_city, DEFAULT_TRANSPORT_COST)
 
 def calculate_discount(subtotal, discount):
     """
