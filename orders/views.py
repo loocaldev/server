@@ -231,8 +231,8 @@ class OrderView(viewsets.ModelViewSet):
         order.save()
         
         # Generar documentos PDF
-        order_pdf = generate_pdf(order, f"order_{order.custom_order_id}.pdf", doc_type="Orden")
-        invoice_pdf = generate_pdf(order, f"invoice_{order.custom_order_id}.pdf", doc_type="Factura")
+        order_pdf = generate_pdf(order, doc_type="Orden")
+        invoice_pdf = generate_pdf(order, doc_type="Factura")
 
         # Subir documentos a S3
         try:
@@ -421,6 +421,9 @@ def generate_pdf(order, doc_type="Orden"):
     Returns:
         bytes: Contenido del PDF en memoria.
     """
+    if filename is None:
+        filename = f"{doc_type.lower()}_{order.custom_order_id}.pdf"
+    ...
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=letter, topMargin=50, bottomMargin=50)
 
