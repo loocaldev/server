@@ -25,7 +25,7 @@ import boto3
 import os
 from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
 from reportlab.lib.styles import getSampleStyleSheet
 from io import BytesIO
 from django.conf import settings
@@ -413,6 +413,7 @@ def transport_cost_view(request):
     cost = calculate_transport_cost(city)  # Calcula el costo usando la lógica centralizada
     return JsonResponse({"cost": cost})
 
+
 def generate_pdf(order, doc_type="Orden"):
     """
     Genera un PDF profesional de la orden o factura.
@@ -428,28 +429,36 @@ def generate_pdf(order, doc_type="Orden"):
     styles = getSampleStyleSheet()
     elements = []
 
+    # Agregar logo
+    logo_path = "https://loocalapp.s3.us-east-1.amazonaws.com/logoloocal.png"  # Cambia esto a la ubicación real del logo
+    try:
+        logo = Image(logo_path, width=100, height=50)  # Ajusta el tamaño del logo
+        elements.append(logo)
+    except Exception:
+        elements.append(Paragraph("Loocal", styles['Title']))  # Fallback si el logo no está disponible
+
     # Encabezado
-    elements.append(Paragraph(f"<strong>Loocal</strong>", styles['Title']))
-    elements.append(Paragraph(f"<strong>{doc_type} #{order.custom_order_id}</strong>", styles['Heading2']))
-    elements.append(Paragraph(f"<strong>Fecha:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", styles['Normal']))
-    elements.append(Paragraph(f"<strong>Estado:</strong> {order.payment_status.capitalize()}", styles['Normal']))
-    elements.append(Spacer(1, 12))
+    elements.append(Spacer(1, 20))
+    elements.append(Paragraph(f"{doc_type} #{order.custom_order_id}", styles['Title']))
+    elements.append(Paragraph(f"Fecha: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", styles['Normal']))
+    elements.append(Paragraph(f"Estado: {order.payment_status.capitalize()}", styles['Normal']))
+    elements.append(Spacer(1, 20))
 
     # Información del cliente
-    elements.append(Paragraph("<strong>Cliente:</strong>", styles['Heading3']))
-    elements.append(Paragraph(f"{order.firstname} {order.lastname}", styles['Normal']))
-    elements.append(Paragraph(f"<strong>Email:</strong> {order.email} | <strong>Tel:</strong> {order.phone}", styles['Normal']))
-    elements.append(Paragraph(f"<strong>Documento:</strong> {order.document_type} {order.document_number}", styles['Normal']))
+    elements.append(Paragraph("Información del Cliente", styles['Heading2']))
+    elements.append(Paragraph(f"Nombre: {order.firstname} {order.lastname}", styles['Normal']))
+    elements.append(Paragraph(f"Email: {order.email} | Teléfono: {order.phone}", styles['Normal']))
+    elements.append(Paragraph(f"Documento: {order.document_type} {order.document_number}", styles['Normal']))
     elements.append(Spacer(1, 12))
 
     # Información de entrega
-    elements.append(Paragraph("<strong>Entrega:</strong>", styles['Heading3']))
-    elements.append(Paragraph(f"<strong>Fecha:</strong> {order.delivery_date} | <strong>Hora:</strong> {order.delivery_time}", styles['Normal']))
-    elements.append(Paragraph(f"<strong>Dirección:</strong> {order.address.street}, {order.address.city}, {order.address.state}, {order.address.postal_code}", styles['Normal']))
+    elements.append(Paragraph("Información de Entrega", styles['Heading2']))
+    elements.append(Paragraph(f"Fecha: {order.delivery_date} | Hora: {order.delivery_time}", styles['Normal']))
+    elements.append(Paragraph(f"Dirección: {order.address.street}, {order.address.city}, {order.address.state}, {order.address.postal_code}", styles['Normal']))
     elements.append(Spacer(1, 12))
 
     # Tabla de productos
-    elements.append(Paragraph("<strong>Productos:</strong>", styles['Heading3']))
+    elements.append(Paragraph("Detalle de Productos", styles['Heading2']))
     data = [["Cant.", "Descripción", "Precio Unitario", "Subtotal"]]
     for item in order.items.all():
         data.append([
@@ -458,8 +467,6 @@ def generate_pdf(order, doc_type="Orden"):
             f"${item.unit_price:,.2f}",
             f"${item.subtotal:,.2f}"
         ])
-    data.append(["", "", "<strong>Total:</strong>", f"<strong>${order.total:,.2f}</strong>"])
-
     table = Table(data, colWidths=[50, 200, 100, 100])
     table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
@@ -470,18 +477,31 @@ def generate_pdf(order, doc_type="Orden"):
         ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
     ]))
     elements.append(table)
-    elements.append(Spacer(1, 12))
+    elements.append(Spacer(1, 20))
 
-    # Resumen de totales
-    elements.append(Paragraph("<strong>Totales:</strong>", styles['Heading3']))
-    elements.append(Paragraph(f"<strong>Subtotal:</strong> ${order.subtotal:,.2f}", styles['Normal']))
+    # Tabla de totales
+    totals_data = [
+        ["Subtotal de productos", f"${order.subtotal:,.2f}"],
+        ["Costo de transporte", f"${order.transport_cost:,.2f}"],
+    ]
     if order.discount_value > 0:
-        elements.append(Paragraph(f"<strong>Descuento:</strong> -${order.discount_value:,.2f}", styles['Normal']))
-    elements.append(Paragraph(f"<strong>Total Final:</strong> ${order.total:,.2f}", styles['Normal']))
-    elements.append(Spacer(1, 24))
+        totals_data.append(["Descuento aplicado", f"-${order.discount_value:,.2f}"])
+    totals_data.append(["Total final", f"${order.total:,.2f}"])
+    totals_table = Table(totals_data, colWidths=[250, 100])
+    totals_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (1, 0), colors.lightgrey),
+        ('TEXTCOLOR', (0, 0), (1, -1), colors.black),
+        ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+    ]))
+    elements.append(Paragraph("Totales", styles['Heading2']))
+    elements.append(totals_table)
+    elements.append(Spacer(1, 20))
 
     # Términos y condiciones
-    elements.append(Paragraph("<strong>Términos y Condiciones:</strong>", styles['Heading3']))
+    elements.append(Paragraph("Términos y Condiciones", styles['Heading2']))
     elements.append(Paragraph("Gracias por su compra. Por favor conserve esta factura como comprobante.", styles['Normal']))
 
     # Generar el PDF
