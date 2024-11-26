@@ -15,7 +15,7 @@ from decimal import Decimal
 from loocal.analytics import track_event
 from django.shortcuts import get_object_or_404
 from companies.models import Company
-from .utils import calculate_discount,calculate_transport_cost,validate_discount_code
+from .utils import calculate_discount,calculate_transport_cost,validate_discount_code, AVAILABLE_CITIES
 from django.http import JsonResponse
 
 User = get_user_model()
@@ -126,13 +126,22 @@ class OrderView(viewsets.ModelViewSet):
                 {"error": "Faltan datos obligatorios: email, teléfono o documento."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-
-        # Validar dirección
         address_data = data.get("address")
+        # Validar dirección
         try:
-            address = get_or_create_address(user=request.user if request.user.is_authenticated else None, address_data=address_data)
+            address = get_or_create_address(
+                user=request.user if request.user.is_authenticated else None,
+                address_data=address_data
+            )
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Validar que la ciudad esté en la lista de ciudades disponibles
+        if address.city.upper() not in AVAILABLE_CITIES:
+            return Response(
+                {"error": f"La ciudad '{address.city}' no está disponible para entregas."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         # Validar fecha y hora de entrega
         try:

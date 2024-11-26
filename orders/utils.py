@@ -2,6 +2,8 @@ from decimal import Decimal
 from .models import Discount, UserDiscount
 from django.utils import timezone
 
+AVAILABLE_CITIES = ["BOGOTÁ D.C.", "CHÍA", "CAJICÁ", "SOPÓ"]
+
 TRANSPORT_COST_BY_CITY = {
     "BOGOTÁ D.C.": 10000,
     "CHÍA": 2000,
@@ -9,7 +11,7 @@ TRANSPORT_COST_BY_CITY = {
     "SOPÓ": 8000,
 }
 
-DEFAULT_TRANSPORT_COST = 180000
+DEFAULT_TRANSPORT_COST = 18000
 
 def calculate_transport_cost(city):
     if not isinstance(city, str):
