@@ -3,13 +3,13 @@ from .models import Discount, UserDiscount
 from django.utils import timezone
 
 TRANSPORT_COST_BY_CITY = {
-    "BOGOTA": 8000,
-    "CHIA": 5000,
-    "CAJICA": 8000,
-    "SOPO": 8000,
+    "BOGOTÁ D.C.": 10000,
+    "CHÍA": 2000,
+    "CAJICÁ": 6000,
+    "SOPÓ": 8000,
 }
 
-DEFAULT_TRANSPORT_COST = 20000
+DEFAULT_TRANSPORT_COST = 180000
 
 def calculate_transport_cost(city):
     if not isinstance(city, str):

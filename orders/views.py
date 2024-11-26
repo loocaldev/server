@@ -363,12 +363,15 @@ TRANSPORT_COSTS = {
     "SOPÓ": 8000,
 }
 
-DEFAULT_COST = 5000 
+DEFAULT_COST = 12000
 
 def transport_cost_view(request):
-    city = request.GET.get("city")
+    """
+    Endpoint para obtener el costo de transporte basado en la ciudad.
+    """
+    city = request.GET.get("city")  # Obtén la ciudad de los parámetros de la URL
     if not city:
         return JsonResponse({"error": "City parameter is missing."}, status=400)
-    
-    cost = TRANSPORT_COSTS.get(city, DEFAULT_COST)
+
+    cost = calculate_transport_cost(city)  # Calcula el costo usando la lógica centralizada
     return JsonResponse({"cost": cost})
