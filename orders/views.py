@@ -412,7 +412,7 @@ def transport_cost_view(request):
     cost = calculate_transport_cost(city)  # Calcula el costo usando la lógica centralizada
     return JsonResponse({"cost": cost})
 
-def generate_order_pdf(order, doc_type="Orden"):
+def generate_pdf(order, doc_type="Orden"):
     """
     Genera un PDF profesional de la orden o factura.
     Args:
