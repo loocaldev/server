@@ -2,7 +2,7 @@ from decimal import Decimal
 from .models import Discount, UserDiscount
 from django.utils import timezone
 
-AVAILABLE_CITIES = ["ZONANORTE", "CHÍA", "CAJICÁ", "SOPÓ"]
+AVAILABLE_CITIES = ["ZONA NORTE", "CHÍA", "CAJICÁ", "SOPÓ"]
 
 TRANSPORT_COST_BY_CITY = {
     "BOGOTÁ NORTE": 10000,
