@@ -544,21 +544,35 @@ def upload_to_s3(file_content, bucket_name, file_key):
 
 def send_email_with_attachments(order, attachments):
     """
-    Envía un correo electrónico con documentos adjuntos.
+    Envía dos correos electrónicos separados con documentos adjuntos:
+    - Uno al cliente con el resumen de la orden.
+    - Otro al administrador con copia del pedido.
+    
     Args:
         order (Order): Objeto de la orden.
         attachments (list): Lista de tuplas (filename, content, mime_type).
     """
-    email = EmailMessage(
-        subject=f"Documentos de Pedido #{order.custom_order_id}",
-        body=f"Hola {order.firstname}, adjuntamos los documentos de tu pedido.",
+    # Correo al cliente
+    customer_email = EmailMessage(
+        subject=f"Tu pedido en Loocal #{order.custom_order_id}",
+        body=f"Hola {order.firstname}, gracias por comprar en Loocal. Adjunto encontrarás el resumen de tu orden.",
         from_email=settings.DEFAULT_FROM_EMAIL,
         to=[order.email],
-        cc=["camilo@loocal.co"],
     )
     for filename, content, mime_type in attachments:
-        email.attach(filename, content, mime_type)
-    email.send()
+        customer_email.attach(filename, content, mime_type)
+    customer_email.send()
+
+    # Correo al administrador
+    admin_email = EmailMessage(
+        subject=f"Nuevo Pedido #{order.custom_order_id} - Copia Administrativa",
+        body=f"Adjunto se encuentra una copia del pedido #{order.custom_order_id} realizada por el cliente {order.firstname} {order.lastname}.",
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        to=["camilo@loocal.co"],
+    )
+    for filename, content, mime_type in attachments:
+        admin_email.attach(filename, content, mime_type)
+    admin_email.send()
     
 def generate_daily_report_pdf(start_time, end_time):
     """
