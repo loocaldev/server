@@ -17,6 +17,13 @@ from django.shortcuts import get_object_or_404
 from companies.models import Company
 from .utils import calculate_discount,calculate_transport_cost,validate_discount_code, AVAILABLE_CITIES
 from django.http import JsonResponse
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+import io
+from django.core.mail import EmailMessage
+import boto3
+from django.conf import settings
+
 
 User = get_user_model()
 
@@ -216,6 +223,29 @@ class OrderView(viewsets.ModelViewSet):
         order.subtotal = subtotal
         order.calculate_total()
         order.save()
+        
+        # Generar documentos PDF
+        order_pdf = generate_pdf(order, f"order_{order.custom_order_id}.pdf", doc_type="Orden")
+        invoice_pdf = generate_pdf(order, f"invoice_{order.custom_order_id}.pdf", doc_type="Factura")
+
+        # Subir documentos a S3
+        try:
+            order_url = upload_to_s3(order_pdf, settings.AWS_STORAGE_BUCKET_NAME, f"orders/order_{order.custom_order_id}.pdf")
+            invoice_url = upload_to_s3(invoice_pdf, settings.AWS_STORAGE_BUCKET_NAME, f"invoices/invoice_{order.custom_order_id}.pdf")
+        except Exception as e:
+            return Response({"error": f"Error al subir documentos a S3: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        # Enviar correos
+        try:
+            send_email_with_attachments(
+                order,
+                [
+                    (f"order_{order.custom_order_id}.pdf", order_pdf, "application/pdf"),
+                    (f"invoice_{order.custom_order_id}.pdf", invoice_pdf, "application/pdf"),
+                ]
+            )
+        except Exception as e:
+            return Response({"error": f"Error al enviar correo: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         serializer = self.get_serializer(order)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -365,17 +395,6 @@ class OrderByCustomOrderIdAPIView(generics.ListAPIView):
         custom_order_id = self.kwargs["custom_order_id"]
         return Order.objects.filter(custom_order_id=custom_order_id)
 
-
-# Simulación de costos de transporte por ciudad
-TRANSPORT_COSTS = {
-    "BOGOTÁ D.C.": 10000,
-    "CHÍA": 2000,
-    "CAJICÁ": 6000,
-    "SOPÓ": 8000,
-}
-
-DEFAULT_COST = 12000
-
 def transport_cost_view(request):
     """
     Endpoint para obtener el costo de transporte basado en la ciudad.
@@ -386,3 +405,82 @@ def transport_cost_view(request):
 
     cost = calculate_transport_cost(city)  # Calcula el costo usando la lógica centralizada
     return JsonResponse({"cost": cost})
+
+def generate_pdf(order, filename, doc_type="Orden"):
+    """
+    Genera un archivo PDF de la orden o factura.
+    Args:
+        order (Order): Objeto de la orden.
+        filename (str): Nombre del archivo.
+        doc_type (str): Tipo de documento ("Orden" o "Factura").
+    Returns:
+        bytes: Archivo PDF en memoria.
+    """
+    buffer = io.BytesIO()
+    c = canvas.Canvas(buffer, pagesize=letter)
+    width, height = letter
+
+    # Título
+    c.setFont("Helvetica-Bold", 16)
+    c.drawString(50, height - 50, f"{doc_type} de Pedido - {order.custom_order_id}")
+
+    # Información del cliente
+    c.setFont("Helvetica", 12)
+    c.drawString(50, height - 100, f"Cliente: {order.firstname} {order.lastname}")
+    c.drawString(50, height - 120, f"Correo: {order.email}")
+    c.drawString(50, height - 140, f"Teléfono: {order.phone}")
+
+    # Detalle de productos
+    c.drawString(50, height - 180, "Productos:")
+    y = height - 200
+    for item in order.items.all():
+        c.drawString(50, y, f"{item.product.name} - {item.quantity} x ${item.unit_price}")
+        y -= 20
+
+    # Totales
+    c.drawString(50, y - 20, f"Subtotal: ${order.subtotal}")
+    c.drawString(50, y - 40, f"Envío: ${order.transport_cost}")
+    c.drawString(50, y - 60, f"Total: ${order.total}")
+
+    # Guardar el PDF
+    c.save()
+    buffer.seek(0)
+
+    return buffer.getvalue()
+
+def upload_to_s3(file_content, bucket_name, file_key):
+    """
+    Sube un archivo a Amazon S3.
+    Args:
+        file_content (bytes): Contenido del archivo.
+        bucket_name (str): Nombre del bucket de S3.
+        file_key (str): Key del archivo en S3.
+    Returns:
+        str: URL del archivo subido.
+    """
+    s3_client = boto3.client(
+        's3',
+        aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+        region_name=settings.AWS_S3_REGION_NAME,
+    )
+    s3_client.put_object(Bucket=bucket_name, Key=file_key, Body=file_content, ACL='public-read')
+    return f"https://{bucket_name}.s3.amazonaws.com/{file_key}"
+
+def send_email_with_attachments(order, attachments):
+    """
+    Envía un correo electrónico con documentos adjuntos.
+    Args:
+        order (Order): Objeto de la orden.
+        attachments (list): Lista de tuplas (filename, content, mime_type).
+    """
+    email = EmailMessage(
+        subject=f"Documentos de Pedido #{order.custom_order_id}",
+        body=f"Hola {order.firstname}, adjuntamos los documentos de tu pedido.",
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        to=[order.email],
+        cc=["camilo@loocal.co"],
+    )
+    for filename, content, mime_type in attachments:
+        email.attach(filename, content, mime_type)
+    email.send()
