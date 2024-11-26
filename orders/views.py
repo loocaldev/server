@@ -135,9 +135,11 @@ class OrderView(viewsets.ModelViewSet):
             )
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        
+        city = address.city.strip().upper()
 
         # Validar que la ciudad esté en la lista de ciudades disponibles
-        if address.city.upper() not in AVAILABLE_CITIES:
+        if city not in AVAILABLE_CITIES:
             return Response(
                 {"error": f"La ciudad '{address.city}' no está disponible para entregas."},
                 status=status.HTTP_400_BAD_REQUEST,
