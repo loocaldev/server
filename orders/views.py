@@ -22,6 +22,7 @@ from reportlab.pdfgen import canvas
 import io
 from django.core.mail import EmailMessage
 import boto3
+import os
 from django.conf import settings
 
 
@@ -230,8 +231,8 @@ class OrderView(viewsets.ModelViewSet):
 
         # Subir documentos a S3
         try:
-            order_url = upload_to_s3(order_pdf, settings.AWS_STORAGE_BUCKET_NAME, f"orders/order_{order.custom_order_id}.pdf")
-            invoice_url = upload_to_s3(invoice_pdf, settings.AWS_STORAGE_BUCKET_NAME, f"invoices/invoice_{order.custom_order_id}.pdf")
+            order_url = upload_to_s3(order_pdf, os.getenv("AWS_STORAGE_BUCKET_NAME"), f"orders/order_{order.custom_order_id}.pdf")
+            invoice_url = upload_to_s3(invoice_pdf, os.getenv("AWS_STORAGE_BUCKET_NAME"), f"invoices/invoice_{order.custom_order_id}.pdf")
         except Exception as e:
             return Response({"error": f"Error al subir documentos a S3: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -460,9 +461,9 @@ def upload_to_s3(file_content, bucket_name, file_key):
     """
     s3_client = boto3.client(
         's3',
-        aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-        aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-        region_name=settings.AWS_S3_REGION_NAME,
+        aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID'),
+        aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
+        region_name=os.getenv('AWS_S3_REGION_NAME'),
     )
     s3_client.put_object(Bucket=bucket_name, Key=file_key, Body=file_content, ACL='public-read')
     return f"https://{bucket_name}.s3.amazonaws.com/{file_key}"
