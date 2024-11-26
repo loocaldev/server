@@ -12,6 +12,9 @@ TRANSPORT_COST_BY_CITY = {
 DEFAULT_TRANSPORT_COST = 20000
 
 def calculate_transport_cost(city):
+    if not isinstance(city, str):
+        # Si city no es una cadena, devuelve el costo de transporte por defecto
+        return DEFAULT_TRANSPORT_COST
     return TRANSPORT_COST_BY_CITY.get(city.upper(), DEFAULT_TRANSPORT_COST)
 
 def calculate_discount(subtotal, discount):

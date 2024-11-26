@@ -265,6 +265,7 @@ class OrderView(viewsets.ModelViewSet):
 def apply_discount(request):
     code = request.data.get("code")
     subtotal = request.data.get("subtotal")
+    city = request.data.get("city", "").upper()  # Asegúrate de que 'city' sea una cadena válida
 
     if not code:
         return Response(
@@ -309,9 +310,10 @@ def apply_discount(request):
         # Calcular el valor del descuento
         discount_value = calculate_discount(subtotal, discount)
         applies_to_transport = discount.applicable_to_transport
-        
+
         if discount.applicable_to_transport:
-            transport_cost = calculate_transport_cost(Address.city)
+            # Usa la ciudad proporcionada en la solicitud
+            transport_cost = calculate_transport_cost(city)
             transport_discount = min(discount_value, transport_cost)
         else:
             transport_discount = 0
@@ -332,7 +334,6 @@ def apply_discount(request):
             {"error": "Código de descuento no válido"},
             status=status.HTTP_400_BAD_REQUEST,
         )
-
 
 
 class OrderByCustomOrderIdAPIView(generics.ListAPIView):

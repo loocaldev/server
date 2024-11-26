@@ -78,3 +78,7 @@ DEBUG 2024-11-25 22:43:52,831 retry Converted retries value: 2 -> Retry(total=2,
 DEBUG 2024-11-25 22:43:52,831 retry Converted retries value: 2 -> Retry(total=2, connect=None, read=None, redirect=None, status=None)
 DEBUG 2024-11-25 22:43:52,872 retry Converted retries value: 2 -> Retry(total=2, connect=None, read=None, redirect=None, status=None)
 DEBUG 2024-11-25 22:43:52,872 retry Converted retries value: 2 -> Retry(total=2, connect=None, read=None, redirect=None, status=None)
+DEBUG 2024-11-25 22:52:07,836 retry Converted retries value: 2 -> Retry(total=2, connect=None, read=None, redirect=None, status=None)
+DEBUG 2024-11-25 22:52:07,836 retry Converted retries value: 2 -> Retry(total=2, connect=None, read=None, redirect=None, status=None)
+DEBUG 2024-11-25 22:52:07,871 retry Converted retries value: 2 -> Retry(total=2, connect=None, read=None, redirect=None, status=None)
+DEBUG 2024-11-25 22:52:07,871 retry Converted retries value: 2 -> Retry(total=2, connect=None, read=None, redirect=None, status=None)
