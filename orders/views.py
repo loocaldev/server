@@ -552,6 +552,12 @@ def send_email_with_attachments(order, attachments):
         order (Order): Objeto de la orden.
         attachments (list): Lista de tuplas (filename, content, mime_type).
     """
+    # Filtrar adjuntos para el cliente (solo resumen)
+    customer_attachments = [
+        (filename, content, mime_type)
+        for filename, content, mime_type in attachments
+        if "order" in filename  # Solo incluir el resumen de la orden
+    ]
     # Correo al cliente
     customer_email = EmailMessage(
         subject=f"Tu pedido en Loocal #{order.custom_order_id}",
@@ -559,7 +565,7 @@ def send_email_with_attachments(order, attachments):
         from_email=settings.DEFAULT_FROM_EMAIL,
         to=[order.email],
     )
-    for filename, content, mime_type in attachments:
+    for filename, content, mime_type in customer_attachments:
         customer_email.attach(filename, content, mime_type)
     customer_email.send()
 
