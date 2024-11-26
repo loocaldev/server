@@ -264,8 +264,7 @@ class OrderView(viewsets.ModelViewSet):
 @api_view(["POST"])
 def apply_discount(request):
     code = request.data.get("code")
-    subtotal = request.data.get("subtotal")
-    city = request.data.get("city", "").upper()  # Asegúrate de que 'city' sea una cadena válida
+    subtotal = Decimal(request.data.get("subtotal", 0))
 
     if not code:
         return Response(
@@ -307,16 +306,28 @@ def apply_discount(request):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-        # Calcular el valor del descuento
-        discount_value = calculate_discount(subtotal, discount)
+        # Inicializar valores de descuento
+        discount_value = Decimal("0.0")
+        transport_discount = Decimal("0.0")
         applies_to_transport = discount.applicable_to_transport
 
-        if discount.applicable_to_transport:
-            # Usa la ciudad proporcionada en la solicitud
-            transport_cost = calculate_transport_cost(city)
-            transport_discount = min(discount_value, transport_cost)
+        # Cálculo del descuento
+        if applies_to_transport:
+            # Si aplica al transporte, usar un valor estimado del transporte
+            transport_cost = calculate_transport_cost(request.data.get("city", ""))
+            transport_discount = min(
+                Decimal(discount.discount_value)
+                if discount.discount_type == "absolute"
+                else transport_cost * (Decimal(discount.discount_value) / 100),
+                transport_cost,  # Máximo el costo del transporte
+            )
         else:
-            transport_discount = 0
+            # Si aplica al subtotal, calcular descuento sobre el subtotal
+            discount_value = (
+                Decimal(subtotal) * (Decimal(discount.discount_value) / 100)
+                if discount.discount_type == "percentage"
+                else min(Decimal(discount.discount_value), subtotal)
+            )
 
         return Response(
             {
