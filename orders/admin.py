@@ -41,6 +41,25 @@ class OrderAdmin(admin.ModelAdmin):
             )
         self.message_user(request, "Las órdenes seleccionadas fueron marcadas como en tránsito.")
     mark_as_shipped.short_description = "Marcar como en tránsito"
+    
+    def save_model(self, request, obj, form, change):
+        if change:  # Si es una actualización
+            original_obj = Order.objects.get(pk=obj.pk)
+            if original_obj.payment_status != obj.payment_status:
+                OrderStatusChangeLog.objects.create(
+                    order=obj,
+                    previous_status=original_obj.payment_status,
+                    new_status=obj.payment_status,
+                    field_changed='payment_status'
+                )
+            if original_obj.shipping_status != obj.shipping_status:
+                OrderStatusChangeLog.objects.create(
+                    order=obj,
+                    previous_status=original_obj.shipping_status,
+                    new_status=obj.shipping_status,
+                    field_changed='shipping_status'
+                )
+        super().save_model(request, obj, form, change)
 
 
 class OrderStatusChangeLogAdmin(admin.ModelAdmin):

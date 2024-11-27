@@ -134,10 +134,28 @@ class Order(models.Model):
     delivery_date = models.DateField(null=True, blank=True)
     delivery_time = models.TimeField(null=True, blank=True)
     
+    def save(self, *args, **kwargs):
+        if self.pk:
+            old_order = Order.objects.get(pk=self.pk)
+            if old_order.payment_status != self.payment_status:
+                OrderStatusChangeLog.objects.create(
+                    order=self,
+                    previous_status=old_order.payment_status,
+                    new_status=self.payment_status,
+                    field_changed='payment_status'
+                )
+            if old_order.shipping_status != self.shipping_status:
+                OrderStatusChangeLog.objects.create(
+                    order=self,
+                    previous_status=old_order.shipping_status,
+                    new_status=self.shipping_status,
+                    field_changed='shipping_status'
+                )
+        self.update_general_status()
+        super().save(*args, **kwargs)
+
+    
     def update_general_status(self):
-        """
-        Actualiza el estado general de la orden en función de los estados de pago y despacho.
-        """
         if self.payment_status == 'refunded' or self.payment_status == 'failed':
             self.general_status = 'canceled'
         elif self.payment_status == 'paid' and self.shipping_status == 'delivered':
