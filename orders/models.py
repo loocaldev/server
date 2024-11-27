@@ -93,6 +93,11 @@ class Order(models.Model):
         ('canceled', 'Cancelada'),
         ('returned', 'Devuelta'),
     ]
+    PAYMENT_METHOD_CHOICES = [
+        ('online', 'Online'),
+        ('in_person', 'In-person'),
+    ]
+
     firstname = models.CharField(max_length=50, null=True, blank=True)
     lastname = models.CharField(max_length=50, null=True, blank=True)
     company_name = models.CharField(max_length=100, null=True, blank=True)  # Para empresas
@@ -107,8 +112,18 @@ class Order(models.Model):
     company = models.ForeignKey(
         Company, on_delete=models.SET_NULL, null=True, blank=True, related_name="orders"
     )
-    payment_status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default='pending')
-    shipping_status = models.CharField(max_length=20, choices=SHIPPING_STATUS_CHOICES, default='pending_preparation')
+    payment_method = models.CharField(
+        max_length=10,
+        choices=PAYMENT_METHOD_CHOICES,
+        default='online',
+        verbose_name="Método de Pago",
+    )
+    payment_status = models.CharField(
+        max_length=20, choices=PAYMENT_STATUS_CHOICES, default='pending'
+    )
+    shipping_status = models.CharField(
+        max_length=20, choices=SHIPPING_STATUS_CHOICES, default='pending_preparation'
+    )
     order_status = models.CharField(max_length=30, choices=GENERAL_STATUS_CHOICES, default='pending')
     updated_at = models.DateTimeField(auto_now=True)
     transport_cost = models.DecimalField(

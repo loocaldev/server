@@ -18,6 +18,7 @@ from companies.models import Company
 from .utils import calculate_discount,calculate_transport_cost,validate_discount_code, AVAILABLE_CITIES
 from django.http import JsonResponse
 from reportlab.lib.pagesizes import letter
+from datetime import timedelta
 from reportlab.pdfgen import canvas
 import io
 from django.core.mail import EmailMessage
@@ -201,10 +202,11 @@ class OrderView(viewsets.ModelViewSet):
             delivery_time=delivery_time,
             transport_cost=transport_cost,
             subtotal=0,  # Se calcula luego
+            payment_status=data.get("payment_status", "pending"),
+            shipping_status=data.get("shipping_status", "pending_preparation"),
+            payment_method=data.get("payment_method", "online"),
             discount=discount,
             discount_value=discount_value,
-            payment_status=data.get("payment_status", "pending"),
-            shipping_status=data.get("shipping_status", "pending"),
         )
 
         # Procesar los productos
@@ -319,10 +321,11 @@ def update_payment_status(request, order_id):
     try:
         order = Order.objects.get(custom_order_id=order_id)
         new_status = request.data.get('payment_status')
+        
         if new_status not in dict(Order.PAYMENT_STATUS_CHOICES):
             return Response({"error": "Estado de pago inválido."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Registrar el cambio
+        # Registrar cambio
         OrderStatusChangeLog.objects.create(
             order=order,
             previous_status=order.payment_status,
@@ -330,10 +333,12 @@ def update_payment_status(request, order_id):
             field_changed='payment_status',
         )
 
-        # Actualizar el estado
+        # Actualizar estado
         order.payment_status = new_status
-        order.update_general_status()  # Actualizar el estado general automáticamente
-        return Response({"message": "Estado de pago actualizado correctamente."}, status=status.HTTP_200_OK)
+        order.update_general_status()  # Actualiza el estado general
+        order.save()
+
+        return Response({"message": "Estado de pago actualizado."}, status=status.HTTP_200_OK)
 
     except Order.DoesNotExist:
         return Response({"error": "Orden no encontrada."}, status=status.HTTP_404_NOT_FOUND)
@@ -362,6 +367,27 @@ def update_shipping_status(request, order_id):
 
     except Order.DoesNotExist:
         return Response({"error": "Orden no encontrada."}, status=status.HTTP_404_NOT_FOUND)
+    
+def revert_in_progress_orders():
+    """
+    Revertir órdenes en 'in_progress' por más de 15 minutos.
+    """
+    threshold_time = timezone.now() - timedelta(minutes=15)
+    orders = Order.objects.filter(payment_status='in_progress', updated_at__lt=threshold_time)
+    
+    for order in orders:
+        order.payment_status = 'failed'
+        OrderStatusChangeLog.objects.create(
+            order=order,
+            previous_status='in_progress',
+            new_status='failed',
+            field_changed='payment_status',
+        )
+        order.update_general_status()
+        order.save()
+
+    # Agregar la tarea al scheduler
+    scheduler.add_job(revert_in_progress_orders, 'interval', minutes=15)
 
 @api_view(["POST"])
 def apply_discount(request):
