@@ -2,7 +2,7 @@ from django.urls import path, include
 from rest_framework.documentation import include_docs_urls
 from rest_framework import routers
 from orders import views
-from .views import transport_cost_view, generate_report_endpoint
+from .views import transport_cost_view, generate_report_endpoint,update_payment_status, update_shipping_status
 
 router = routers.DefaultRouter()
 router.register(r'order', views.OrderView, basename='order')
@@ -14,4 +14,6 @@ urlpatterns = [
     path("transport-cost/", transport_cost_view, name="transport_cost"),
     path("docs/", include_docs_urls(title="Orders API")),
     path('generate-daily-report/', generate_report_endpoint, name='generate-daily-report'),
+    path('order/<str:order_id>/update-payment-status/', update_payment_status, name='update-payment-status'),
+    path('order/<str:order_id>/update-shipping-status/', update_shipping_status, name='update-shipping-status'),
 ]

@@ -5,13 +5,7 @@ from products.models import Product, ProductVariation
 from loocal.models import Address
 from companies.models import Company
 from decimal import Decimal
-
-STATUS_CHOICES = [
-    ("pending", "Pendiente"),
-    ("approved", "Aprobada"),
-    ("rejected", "Rechazada"),
-    ("failed", "Fallida"),
-]
+from django.utils.timezone import now
 
 
 class Discount(models.Model):
@@ -73,6 +67,32 @@ class UserDiscount(models.Model):
 
 
 class Order(models.Model):
+    PAYMENT_STATUS_CHOICES = [
+        ('pending', 'Pendiente de Pago'),
+        ('in_progress', 'En Progreso'),
+        ('paid', 'Pagado'),
+        ('failed', 'Fallido'),
+        ('refunded', 'Reembolsado'),
+    ]
+
+    SHIPPING_STATUS_CHOICES = [
+        ('pending_preparation', 'Pendiente de Preparación'),
+        ('preparing', 'Preparando para Envío'),
+        ('ready_to_ship', 'Listo para Despacho'),
+        ('in_transit', 'En Camino'),
+        ('delivered', 'Entregado'),
+        ('returned', 'Devuelto'),
+    ]
+
+    GENERAL_STATUS_CHOICES = [
+        ('pending', 'Pendiente'),
+        ('in_preparation', 'En Preparación'),
+        ('in_transit', 'En Tránsito'),
+        ('delivered_paid', 'Entregada (Pagada)'),
+        ('delivered_pending_payment', 'Entregada (Pendiente de Pago)'),
+        ('canceled', 'Cancelada'),
+        ('returned', 'Devuelta'),
+    ]
     firstname = models.CharField(max_length=50, null=True, blank=True)
     lastname = models.CharField(max_length=50, null=True, blank=True)
     company_name = models.CharField(max_length=100, null=True, blank=True)  # Para empresas
@@ -87,25 +107,10 @@ class Order(models.Model):
     company = models.ForeignKey(
         Company, on_delete=models.SET_NULL, null=True, blank=True, related_name="orders"
     )
-    payment_status = models.CharField(
-        max_length=50,
-        choices=[
-            ("pending", "Pending"),
-            ("in progress", "In Progress"),
-            ("completed", "Completed"),
-            ("failed", "Failed"),
-        ],
-        default="pending",
-    )
-    shipping_status = models.CharField(
-        max_length=10,
-        choices=[
-            ("pending", "Pending"),
-            ("shipped", "Shipped"),
-            ("delivered", "Delivered"),
-        ],
-        default="pending",
-    )
+    payment_status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default='pending')
+    shipping_status = models.CharField(max_length=20, choices=SHIPPING_STATUS_CHOICES, default='pending_preparation')
+    order_status = models.CharField(max_length=30, choices=GENERAL_STATUS_CHOICES, default='pending')
+    updated_at = models.DateTimeField(auto_now=True)
     transport_cost = models.DecimalField(
         max_digits=10, decimal_places=2, default=0.0, verbose_name="Costo de envio"
     )
@@ -128,6 +133,26 @@ class Order(models.Model):
     # Campos para la fecha y hora de entrega
     delivery_date = models.DateField(null=True, blank=True)
     delivery_time = models.TimeField(null=True, blank=True)
+    
+    def update_general_status(self):
+        """
+        Actualiza el estado general de la orden en función de los estados de pago y despacho.
+        """
+        if self.payment_status == 'refunded' or self.payment_status == 'failed':
+            self.general_status = 'canceled'
+        elif self.payment_status == 'paid' and self.shipping_status == 'delivered':
+            self.general_status = 'delivered_paid'
+        elif self.payment_status == 'pending' and self.shipping_status == 'delivered':
+            self.general_status = 'delivered_pending_payment'
+        elif self.payment_status == 'paid' and self.shipping_status == 'in_transit':
+            self.general_status = 'in_transit'
+        elif self.payment_status == 'pending' and self.shipping_status in ['pending_preparation', 'in_transit']:
+            self.general_status = 'in_preparation'
+        elif self.shipping_status == 'returned':
+            self.general_status = 'returned'
+        else:
+            self.general_status = 'pending'
+        self.save()
     
     def calculate_total(self):
         self.discount_value = self.discount_value or Decimal("0.0")
@@ -176,3 +201,14 @@ class OrderItem(models.Model):
 
     def __str__(self):
         return f"Order {self.order.custom_order_id} - {self.product.name} ({self.quantity} units)"
+
+
+class OrderStatusChangeLog(models.Model):
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="status_logs")
+    previous_status = models.CharField(max_length=30)
+    new_status = models.CharField(max_length=30)
+    field_changed = models.CharField(max_length=20)  # 'payment_status', 'shipping_status', or 'general_status'
+    timestamp = models.DateTimeField(default=now)
+
+    def __str__(self):
+        return f"{self.field_changed} changed from {self.previous_status} to {self.new_status} on {self.timestamp}"

@@ -5,7 +5,7 @@ from rest_framework.exceptions import NotFound
 from django.utils import timezone
 from django.db import transaction
 from django.db.models import F, Q
-from .models import Order, OrderItem, Discount, UserDiscount
+from .models import Order, OrderItem, Discount, UserDiscount, OrderStatusChangeLog
 from products.models import Product, ProductVariation
 from django.contrib.auth import get_user_model
 from loocal.models import Address
@@ -313,6 +313,55 @@ class OrderView(viewsets.ModelViewSet):
         serializer = self.get_serializer(order)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+
+@api_view(['POST'])
+def update_payment_status(request, order_id):
+    try:
+        order = Order.objects.get(custom_order_id=order_id)
+        new_status = request.data.get('payment_status')
+        if new_status not in dict(Order.PAYMENT_STATUS_CHOICES):
+            return Response({"error": "Estado de pago inválido."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Registrar el cambio
+        OrderStatusChangeLog.objects.create(
+            order=order,
+            previous_status=order.payment_status,
+            new_status=new_status,
+            field_changed='payment_status',
+        )
+
+        # Actualizar el estado
+        order.payment_status = new_status
+        order.update_general_status()  # Actualizar el estado general automáticamente
+        return Response({"message": "Estado de pago actualizado correctamente."}, status=status.HTTP_200_OK)
+
+    except Order.DoesNotExist:
+        return Response({"error": "Orden no encontrada."}, status=status.HTTP_404_NOT_FOUND)
+
+
+@api_view(['POST'])
+def update_shipping_status(request, order_id):
+    try:
+        order = Order.objects.get(custom_order_id=order_id)
+        new_status = request.data.get('shipping_status')
+        if new_status not in dict(Order.SHIPPING_STATUS_CHOICES):
+            return Response({"error": "Estado de despacho inválido."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Registrar el cambio
+        OrderStatusChangeLog.objects.create(
+            order=order,
+            previous_status=order.shipping_status,
+            new_status=new_status,
+            field_changed='shipping_status',
+        )
+
+        # Actualizar el estado
+        order.shipping_status = new_status
+        order.update_general_status()  # Actualizar el estado general automáticamente
+        return Response({"message": "Estado de despacho actualizado correctamente."}, status=status.HTTP_200_OK)
+
+    except Order.DoesNotExist:
+        return Response({"error": "Orden no encontrada."}, status=status.HTTP_404_NOT_FOUND)
 
 @api_view(["POST"])
 def apply_discount(request):
