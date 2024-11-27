@@ -135,8 +135,13 @@ class Order(models.Model):
     delivery_time = models.TimeField(null=True, blank=True)
     
     def save(self, *args, **kwargs):
-        if self.pk:
+        # Determina si se está actualizando el estado general
+        update_status = kwargs.pop('update_status', True)
+
+        if self.pk:  # Solo realiza las verificaciones si el objeto ya existe
             old_order = Order.objects.get(pk=self.pk)
+
+            # Registro de cambios en `payment_status`
             if old_order.payment_status != self.payment_status:
                 OrderStatusChangeLog.objects.create(
                     order=self,
@@ -144,6 +149,8 @@ class Order(models.Model):
                     new_status=self.payment_status,
                     field_changed='payment_status'
                 )
+
+            # Registro de cambios en `shipping_status`
             if old_order.shipping_status != self.shipping_status:
                 OrderStatusChangeLog.objects.create(
                     order=self,
@@ -151,11 +158,18 @@ class Order(models.Model):
                     new_status=self.shipping_status,
                     field_changed='shipping_status'
                 )
-        self.update_general_status()
+
+        # Evita un ciclo infinito al actualizar el estado general
+        if update_status:
+            self.update_general_status(save_instance=False)
+
         super().save(*args, **kwargs)
 
     
-    def update_general_status(self):
+    def update_general_status(self, save_instance=True):
+        """
+        Actualiza el estado general de la orden según los estados de pago y despacho.
+        """
         if self.payment_status == 'refunded' or self.payment_status == 'failed':
             self.general_status = 'canceled'
         elif self.payment_status == 'paid' and self.shipping_status == 'delivered':
@@ -170,7 +184,10 @@ class Order(models.Model):
             self.general_status = 'returned'
         else:
             self.general_status = 'pending'
-        self.save()
+
+        # Guarda solo si se especifica explícitamente
+        if save_instance:
+            self.save(update_status=False)
     
     def calculate_total(self):
         self.discount_value = self.discount_value or Decimal("0.0")
