@@ -35,6 +35,10 @@ from reportlab.lib.styles import getSampleStyleSheet
 from io import BytesIO
 from payments.models import Payment
 from django.conf import settings
+import logging
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.DEBUG)
 
 
 User = get_user_model()
@@ -250,8 +254,12 @@ class OrderView(viewsets.ModelViewSet):
         )
         
         # Verifica si la orden cumple las condiciones para procesarse
+        logger.debug(f"Verificando si la orden {order.custom_order_id} puede procesarse.")
         if can_process_order(order):
+            logger.info(f"La orden {order.custom_order_id} cumple las condiciones para procesarse.")
             process_order_documents_and_emails(order)
+        else:
+            logger.warning(f"La orden {order.custom_order_id} no cumple las condiciones para procesarse.")
             
         serializer = self.get_serializer(order)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
