@@ -209,15 +209,7 @@ class OrderView(viewsets.ModelViewSet):
             discount_value=discount_value,
         )
         
-        Payment.objects.create(
-            transaction_amount=order.total,
-            token=order.custom_order_id,  # Usa el custom_order_id como referencia
-            description=f"Pago para la orden {order.custom_order_id}",
-            installments=1,  # Ajustar según la lógica de tu app
-            payment_method_id="unknown",  # Puede ser 'online' o similar
-            payer_email=order.email,
-            status="pending",  # Estado inicial del pago
-        )
+        
 
         # Procesar los productos
         items_data = data.get("items", [])
@@ -246,6 +238,16 @@ class OrderView(viewsets.ModelViewSet):
         order.subtotal = subtotal
         order.calculate_total()
         order.save()
+        
+        Payment.objects.create(
+            transaction_amount=order.calculate_total(),
+            token=order.custom_order_id,  # Usa el custom_order_id como referencia
+            description=f"Pago para la orden {order.custom_order_id}",
+            installments=1,  # Ajustar según la lógica de tu app
+            payment_method_id=data.get("payment_method", "online"),  # Puede ser 'online' o similar
+            payer_email=order.email,
+            status="pending",  # Estado inicial del pago
+        )
         
         # Generar documentos PDF
         order_pdf = generate_pdf(order, doc_type="Orden")
