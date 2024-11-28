@@ -251,7 +251,7 @@ class Order(models.Model):
         )
 
         # Asegurarse de que el total no sea negativo y redondear
-        self.total = max(total, Decimal("0.0")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        self.total = max(total, Decimal("0.0")).quantize(Decimal("0"), rounding=ROUND_HALF_UP)
 
     def __str__(self):
         return f"Order {self.custom_order_id} - {self.firstname or self.company_name} (${self.subtotal})"
