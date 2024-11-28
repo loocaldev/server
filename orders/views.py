@@ -33,6 +33,7 @@ from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
 from reportlab.lib.styles import getSampleStyleSheet
 from io import BytesIO
+from payments.models import Payment
 from django.conf import settings
 
 
@@ -206,6 +207,16 @@ class OrderView(viewsets.ModelViewSet):
             payment_method=data.get("payment_method", "online"),
             discount=discount,
             discount_value=discount_value,
+        )
+        
+        Payment.objects.create(
+            transaction_amount=order.total,
+            token=order.custom_order_id,  # Usa el custom_order_id como referencia
+            description=f"Pago para la orden {order.custom_order_id}",
+            installments=1,  # Ajustar según la lógica de tu app
+            payment_method_id="unknown",  # Puede ser 'online' o similar
+            payer_email=order.email,
+            status="pending",  # Estado inicial del pago
         )
 
         # Procesar los productos
