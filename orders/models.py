@@ -165,6 +165,10 @@ class Order(models.Model):
                         new_status=self.payment_status,
                         field_changed='payment_status'
                     )
+                    # Verifica si el estado general debe actualizarse automáticamente
+                    if self.payment_status in ['in_progress', 'paid']:
+                        self.shipping_status = 'pending_preparation'
+                        self.update_general_status(save_instance=False)
                 if old_order.shipping_status != self.shipping_status:
                     OrderStatusChangeLog.objects.create(
                         order=self,
@@ -183,19 +187,19 @@ class Order(models.Model):
         Actualiza el estado general de la orden según los estados de pago y despacho.
         """
         if self.payment_status == 'refunded' or self.payment_status == 'failed':
-            self.general_status = 'canceled'
+            self.order_status = 'canceled'
+        elif self.payment_status in ['in_progress', 'paid'] and self.shipping_status == 'pending_preparation':
+            self.order_status = 'in_preparation'
         elif self.payment_status == 'paid' and self.shipping_status == 'delivered':
-            self.general_status = 'delivered_paid'
+            self.order_status = 'delivered_paid'
         elif self.payment_status == 'pending' and self.shipping_status == 'delivered':
-            self.general_status = 'delivered_pending_payment'
+            self.order_status = 'delivered_pending_payment'
         elif self.payment_status == 'paid' and self.shipping_status == 'in_transit':
-            self.general_status = 'in_transit'
-        elif self.payment_status == 'pending' and self.shipping_status in ['pending_preparation', 'in_transit']:
-            self.general_status = 'in_preparation'
+            self.order_status = 'in_transit'
         elif self.shipping_status == 'returned':
-            self.general_status = 'returned'
+            self.order_status = 'returned'
         else:
-            self.general_status = 'pending'
+            self.order_status = 'pending'
 
         # Guarda solo si se especifica explícitamente
         if save_instance:
