@@ -240,7 +240,7 @@ class OrderView(viewsets.ModelViewSet):
         order.save()
         
         Payment.objects.create(
-            transaction_amount=order.calculate_total(),
+            transaction_amount=order.total,
             token=order.custom_order_id,  # Usa el custom_order_id como referencia
             description=f"Pago para la orden {order.custom_order_id}",
             installments=1,  # Ajustar según la lógica de tu app
