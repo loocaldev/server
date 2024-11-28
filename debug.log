@@ -122,3 +122,13 @@ INFO 2024-11-27 22:17:13,949 base Added job "generate_and_send_daily_report" to 
 INFO 2024-11-27 22:17:13,949 base Scheduler started
 DEBUG 2024-11-27 22:17:13,949 base Looking for jobs to run
 DEBUG 2024-11-27 22:17:13,949 base Next wakeup is due at 2024-11-28 17:00:00-05:00 (in 67366.050826 seconds)
+DEBUG 2024-11-28 09:54:14,151 retry Converted retries value: 2 -> Retry(total=2, connect=None, read=None, redirect=None, status=None)
+DEBUG 2024-11-28 09:54:14,151 retry Converted retries value: 2 -> Retry(total=2, connect=None, read=None, redirect=None, status=None)
+DEBUG 2024-11-28 09:54:14,176 retry Converted retries value: 2 -> Retry(total=2, connect=None, read=None, redirect=None, status=None)
+DEBUG 2024-11-28 09:54:14,176 retry Converted retries value: 2 -> Retry(total=2, connect=None, read=None, redirect=None, status=None)
+DEBUG 2024-11-28 09:54:17,064 win32 Looking up time zone info from registry
+INFO 2024-11-28 09:54:17,148 base Adding job tentatively -- it will be properly scheduled when the scheduler starts
+INFO 2024-11-28 09:54:17,148 base Added job "generate_and_send_daily_report" to job store "default"
+INFO 2024-11-28 09:54:17,148 base Scheduler started
+DEBUG 2024-11-28 09:54:17,148 base Looking for jobs to run
+DEBUG 2024-11-28 09:54:17,157 base Next wakeup is due at 2024-11-28 17:00:00-05:00 (in 25542.842225 seconds)

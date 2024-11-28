@@ -6,6 +6,7 @@ from loocal.models import Address
 from companies.models import Company
 from decimal import Decimal
 from django.utils.timezone import now
+from decimal import Decimal, ROUND_HALF_UP
 
 
 class Discount(models.Model):
@@ -216,33 +217,41 @@ class Order(models.Model):
             self.save(update_status=False)
     
     def calculate_total(self):
+        """
+        Calcula el total de la orden aplicando transporte, descuentos y redondeo adecuado.
+        """
+        # Asegurar que los valores no sean None y convertirlos a Decimal
         self.discount_value = self.discount_value or Decimal("0.0")
         self.transport_cost = self.transport_cost or Decimal("0.0")
         self.discount_on_transport = self.discount_on_transport or Decimal("0.0")
-        
+
         # Validar que los descuentos no superen los valores correspondientes
         self.discount_on_transport = min(self.discount_on_transport, self.transport_cost)
-        self.discount_value = min(self.discount_value, self.subtotal)
+        self.discount_on_transport = self.discount_on_transport.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
+        self.discount_value = min(self.discount_value, self.subtotal)
+        self.discount_value = self.discount_value.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+        # Calcular descuento si existe
         if self.discount:
             if self.discount.discount_type == "percentage":
-                self.discount_value = Decimal(self.subtotal) * (
-                    Decimal(self.discount.discount_value) / Decimal("100")
-                )
+                calculated_discount = Decimal(self.subtotal) * (Decimal(self.discount.discount_value) / Decimal("100"))
             else:
-                self.discount_value = Decimal(self.discount.discount_value)
+                calculated_discount = Decimal(self.discount.discount_value)
 
-            # Total después del descuento
-            self.total = max(
-                Decimal(self.subtotal)
-                + Decimal(self.transport_cost)
-                - Decimal(self.discount_value)
-                - Decimal(self.discount_on_transport),
-                Decimal("0.0"),
-            )
-        else:
-            # Total sin descuento
-            self.total = Decimal(self.subtotal) + Decimal(self.transport_cost)
+            # Limitar el descuento al subtotal y redondear
+            self.discount_value = min(calculated_discount, self.subtotal).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+        # Calcular total
+        total = (
+            Decimal(self.subtotal)  # Subtotal de productos
+            + Decimal(self.transport_cost)  # Costo de transporte
+            - Decimal(self.discount_value)  # Descuento en productos
+            - Decimal(self.discount_on_transport)  # Descuento en transporte
+        )
+
+        # Asegurarse de que el total no sea negativo y redondear
+        self.total = max(total, Decimal("0.0")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
     def __str__(self):
         return f"Order {self.custom_order_id} - {self.firstname or self.company_name} (${self.subtotal})"
