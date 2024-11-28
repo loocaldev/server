@@ -152,23 +152,32 @@ class Order(models.Model):
     delivery_time = models.TimeField(null=True, blank=True)
     
     def save(self, *args, **kwargs):
-        # Si es temporal, omitir actualizaciones de estado y cálculos complejos
+        # Verifica si la orden debe dejar de ser temporal
+        if self.payment_status in ['in_progress', 'paid']:
+            if self.is_temporary:
+                print(f"Order {self.custom_order_id} is no longer temporary.")
+            self.is_temporary = False
+
+        # Solo actualiza el estado general si la orden no es temporal
         if not self.is_temporary:
-            # Lógica de registro de cambios y estado general
             update_status = kwargs.pop('update_status', True)
-            if self.pk:  
+            if self.pk:
                 old_order = Order.objects.get(pk=self.pk)
+
+                # Manejo de cambios en payment_status
                 if old_order.payment_status != self.payment_status:
+                    print(f"Payment status changed from {old_order.payment_status} to {self.payment_status}")
                     OrderStatusChangeLog.objects.create(
                         order=self,
                         previous_status=old_order.payment_status,
                         new_status=self.payment_status,
                         field_changed='payment_status'
                     )
-                    # Verifica si el estado general debe actualizarse automáticamente
                     if self.payment_status in ['in_progress', 'paid']:
                         self.shipping_status = 'pending_preparation'
                         self.update_general_status(save_instance=False)
+
+                # Manejo de cambios en shipping_status
                 if old_order.shipping_status != self.shipping_status:
                     OrderStatusChangeLog.objects.create(
                         order=self,
@@ -176,6 +185,7 @@ class Order(models.Model):
                         new_status=self.shipping_status,
                         field_changed='shipping_status'
                     )
+
             if update_status:
                 self.update_general_status(save_instance=False)
 
@@ -183,9 +193,8 @@ class Order(models.Model):
 
     
     def update_general_status(self, save_instance=True):
-        """
-        Actualiza el estado general de la orden según los estados de pago y despacho.
-        """
+        print(f"Updating general status for Order {self.custom_order_id}")
+        print(f"Current payment_status: {self.payment_status}, shipping_status: {self.shipping_status}")
         if self.payment_status == 'refunded' or self.payment_status == 'failed':
             self.order_status = 'canceled'
         elif self.payment_status in ['in_progress', 'paid'] and self.shipping_status == 'pending_preparation':
@@ -201,7 +210,8 @@ class Order(models.Model):
         else:
             self.order_status = 'pending'
 
-        # Guarda solo si se especifica explícitamente
+        print(f"Order {self.custom_order_id} updated to general_status: {self.order_status}")
+
         if save_instance:
             self.save(update_status=False)
     
