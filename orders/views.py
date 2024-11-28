@@ -252,8 +252,9 @@ class OrderView(viewsets.ModelViewSet):
         # Verifica si la orden cumple las condiciones para procesarse
         if can_process_order(order):
             process_order_documents_and_emails(order)
-            serializer = self.get_serializer(order)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            
+        serializer = self.get_serializer(order)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
     def partial_update(self, request, *args, **kwargs):
@@ -302,10 +303,40 @@ class OrderView(viewsets.ModelViewSet):
         # Actualización de estado de pago
         order.payment_status = data.get("payment_status", order.payment_status)
         order.save()
+        
+        # Verifica si la orden cumple las condiciones para procesarse
+        if can_process_order(order):
+            process_order_documents_and_emails(order)
 
         serializer = self.get_serializer(order)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+
+def process_order_documents_and_emails(order):
+    """
+    Genera documentos (orden y factura) y los envía por correo cuando la orden está lista.
+    """
+    try:
+        # Generar documentos PDF
+        order_pdf = generate_pdf(order, doc_type="Orden")
+        invoice_pdf = generate_pdf(order, doc_type="Factura")
+
+        # Subir documentos a S3
+        order_url = upload_to_s3(order_pdf, os.getenv("AWS_STORAGE_BUCKET_NAME"), f"orders/order_{order.custom_order_id}.pdf")
+        invoice_url = upload_to_s3(invoice_pdf, os.getenv("AWS_STORAGE_BUCKET_NAME"), f"invoices/invoice_{order.custom_order_id}.pdf")
+
+        # Enviar correos
+        send_email_with_attachments(
+            order,
+            [
+                (f"order_{order.custom_order_id}.pdf", order_pdf, "application/pdf"),
+                (f"invoice_{order.custom_order_id}.pdf", invoice_pdf, "application/pdf"),
+            ]
+        )
+        print(f"Order {order.custom_order_id} documents generated and emails sent.")
+
+    except Exception as e:
+        print(f"Error processing order {order.custom_order_id}: {str(e)}")
 
 @api_view(['POST'])
 def update_payment_status(request, order_id):
@@ -464,40 +495,12 @@ def transport_cost_view(request):
     return JsonResponse({"cost": cost})
 
 
-
-
 def can_process_order(order):
     """
     Verifica si la orden cumple las condiciones para ser procesada.
     La orden debe no ser temporal y estar en estado 'in_preparation'.
     """
     return not order.is_temporary and order.order_status == 'in_preparation'
-
-def process_order_documents_and_emails(order):
-    """
-    Genera documentos (orden y factura) y los envía por correo cuando la orden está lista.
-    """
-    try:
-        # Generar documentos PDF
-        order_pdf = generate_pdf(order, doc_type="Orden")
-        invoice_pdf = generate_pdf(order, doc_type="Factura")
-
-        # Subir documentos a S3
-        order_url = upload_to_s3(order_pdf, os.getenv("AWS_STORAGE_BUCKET_NAME"), f"orders/order_{order.custom_order_id}.pdf")
-        invoice_url = upload_to_s3(invoice_pdf, os.getenv("AWS_STORAGE_BUCKET_NAME"), f"invoices/invoice_{order.custom_order_id}.pdf")
-
-        # Enviar correos
-        send_email_with_attachments(
-            order,
-            [
-                (f"order_{order.custom_order_id}.pdf", order_pdf, "application/pdf"),
-                (f"invoice_{order.custom_order_id}.pdf", invoice_pdf, "application/pdf"),
-            ]
-        )
-        print(f"Order {order.custom_order_id} documents generated and emails sent.")
-
-    except Exception as e:
-        print(f"Error processing order {order.custom_order_id}: {str(e)}")
 
 def generate_pdf(order, doc_type="Orden"):
     """
