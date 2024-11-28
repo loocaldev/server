@@ -109,6 +109,8 @@ class Order(models.Model):
     subtotal = models.DecimalField(max_digits=10, decimal_places=2)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    checkout = models.BooleanField(default=False)
+    is_temporary = models.BooleanField(default=True)
     company = models.ForeignKey(
         Company, on_delete=models.SET_NULL, null=True, blank=True, related_name="orders"
     )
@@ -150,33 +152,28 @@ class Order(models.Model):
     delivery_time = models.TimeField(null=True, blank=True)
     
     def save(self, *args, **kwargs):
-        # Determina si se está actualizando el estado general
-        update_status = kwargs.pop('update_status', True)
-
-        if self.pk:  # Solo realiza las verificaciones si el objeto ya existe
-            old_order = Order.objects.get(pk=self.pk)
-
-            # Registro de cambios en `payment_status`
-            if old_order.payment_status != self.payment_status:
-                OrderStatusChangeLog.objects.create(
-                    order=self,
-                    previous_status=old_order.payment_status,
-                    new_status=self.payment_status,
-                    field_changed='payment_status'
-                )
-
-            # Registro de cambios en `shipping_status`
-            if old_order.shipping_status != self.shipping_status:
-                OrderStatusChangeLog.objects.create(
-                    order=self,
-                    previous_status=old_order.shipping_status,
-                    new_status=self.shipping_status,
-                    field_changed='shipping_status'
-                )
-
-        # Evita un ciclo infinito al actualizar el estado general
-        if update_status:
-            self.update_general_status(save_instance=False)
+        # Si es temporal, omitir actualizaciones de estado y cálculos complejos
+        if not self.is_temporary:
+            # Lógica de registro de cambios y estado general
+            update_status = kwargs.pop('update_status', True)
+            if self.pk:  
+                old_order = Order.objects.get(pk=self.pk)
+                if old_order.payment_status != self.payment_status:
+                    OrderStatusChangeLog.objects.create(
+                        order=self,
+                        previous_status=old_order.payment_status,
+                        new_status=self.payment_status,
+                        field_changed='payment_status'
+                    )
+                if old_order.shipping_status != self.shipping_status:
+                    OrderStatusChangeLog.objects.create(
+                        order=self,
+                        previous_status=old_order.shipping_status,
+                        new_status=self.shipping_status,
+                        field_changed='shipping_status'
+                    )
+            if update_status:
+                self.update_general_status(save_instance=False)
 
         super().save(*args, **kwargs)
 

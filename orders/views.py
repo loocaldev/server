@@ -18,7 +18,6 @@ from companies.models import Company
 from .utils import calculate_discount,calculate_transport_cost,validate_discount_code, AVAILABLE_CITIES
 from django.http import JsonResponse
 from reportlab.lib.pagesizes import letter
-from datetime import timedelta
 from reportlab.pdfgen import canvas
 import io
 from django.core.mail import EmailMessage
@@ -367,27 +366,6 @@ def update_shipping_status(request, order_id):
 
     except Order.DoesNotExist:
         return Response({"error": "Orden no encontrada."}, status=status.HTTP_404_NOT_FOUND)
-    
-def revert_in_progress_orders():
-    """
-    Revertir órdenes en 'in_progress' por más de 15 minutos.
-    """
-    threshold_time = timezone.now() - timedelta(minutes=15)
-    orders = Order.objects.filter(payment_status='in_progress', updated_at__lt=threshold_time)
-    
-    for order in orders:
-        order.payment_status = 'failed'
-        OrderStatusChangeLog.objects.create(
-            order=order,
-            previous_status='in_progress',
-            new_status='failed',
-            field_changed='payment_status',
-        )
-        order.update_general_status()
-        order.save()
-
-    # Agregar la tarea al scheduler
-    scheduler.add_job(revert_in_progress_orders, 'interval', minutes=15)
 
 @api_view(["POST"])
 def apply_discount(request):
