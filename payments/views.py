@@ -71,7 +71,10 @@ def wompi_webhook(request):
                             "failed": "failed",
                             "pending": "pending",
                         }
-                        order.payment_status = order_status_map.get(payment.status, "unknown")
+                        order.payment_status = order_status_map.get(payment.status, "pending")
+                        if order.payment_status in ['in_progress', 'paid']:
+                            order.is_temporary = False
+                            print(f"Order {order.custom_order_id} is now being processed.")
                         order.save()
 
                         logger.info(
